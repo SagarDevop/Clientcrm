@@ -1,7 +1,9 @@
-import React from 'react';
-import { X, Printer, Share2, CheckCircle2, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Printer, Share2, CheckCircle2, Clock, QrCode, Copy, Check, ExternalLink } from 'lucide-react';
+import { buildUpiLink, getUpiQrCodeUrl, getSavedUpiId, getSavedUpiName } from '../../utils/upi.js';
 
 export function ClientReceiptModal({ client, payments = [], isOpen, onClose, onOpenWhatsApp }) {
+  const [copiedUpi, setCopiedUpi] = useState(false);
   if (!isOpen || !client) return null;
 
   const handlePrint = () => {
@@ -24,6 +26,26 @@ export function ClientReceiptModal({ client, payments = [], isOpen, onClose, onO
   });
 
   const receiptNumber = `RCP-${(client.id || '0000').slice(0, 6).toUpperCase()}-${(client.startDate || '').replace(/-/g, '')}`;
+
+  const upiId = getSavedUpiId();
+  const upiName = getSavedUpiName();
+  const upiLink = buildUpiLink({
+    upiId,
+    payeeName: upiName,
+    amount: remainingAmount,
+    transactionNote: `Invoice ${receiptNumber} - ${client.name}`,
+  });
+  const upiQrUrl = getUpiQrCodeUrl(upiLink, 180);
+
+  const handleCopyUpi = async () => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(upiId);
+      }
+      setCopiedUpi(true);
+      setTimeout(() => setCopiedUpi(false), 2000);
+    } catch {}
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-4 overflow-y-auto print:p-0 print:bg-white print:static print:inset-auto">
@@ -228,6 +250,65 @@ export function ClientReceiptModal({ client, payments = [], isOpen, onClose, onO
               </tfoot>
             </table>
           </div>
+
+          {/* Dynamic UPI Payment QR Code (Only if balance is outstanding) */}
+          {!isFullyPaid && remainingAmount > 0 && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 dark:bg-stone-800/40 print:bg-stone-50 border border-stone-200 dark:border-stone-800 print:border-stone-300 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-2 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-bold text-stone-900 dark:text-stone-100 print:text-black">
+                  <QrCode className="w-4 h-4 text-emerald-600" />
+                  <span>Scan to Pay ₹{remainingAmount.toLocaleString()} via Any UPI App</span>
+                </div>
+                <p className="text-[11px] text-stone-500 print:text-stone-600">
+                  Supported: <b>Google Pay • PhonePe • Paytm • BHIM • CRED • Bank UPI</b>
+                </p>
+                <div className="text-xs space-y-0.5 pt-0.5">
+                  <div className="text-stone-600 dark:text-stone-300 print:text-stone-700">
+                    UPI ID: <strong className="font-mono">{upiId}</strong>
+                    <button
+                      type="button"
+                      onClick={handleCopyUpi}
+                      className="ml-2 inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline print:hidden font-semibold"
+                    >
+                      {copiedUpi ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-stone-400" />}
+                      <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <div className="text-stone-500 print:text-stone-600 text-[11px]">
+                    Payee: <strong>{upiName}</strong>
+                  </div>
+                </div>
+
+                {/* Direct Pay Link Button (Hidden on Print) */}
+                <div className="pt-1.5 print:hidden">
+                  <a
+                    href={upiLink}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition-colors"
+                  >
+                    <span>Tap to Pay via UPI App</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Dynamic QR Code Image */}
+              <div className="flex flex-col items-center flex-shrink-0">
+                <div className="p-2 bg-white rounded-xl border border-stone-200 shadow-xs">
+                  <img
+                    src={upiQrUrl}
+                    alt="UPI Payment QR Code"
+                    width={130}
+                    height={130}
+                    className="w-32 h-32 block"
+                    loading="lazy"
+                  />
+                </div>
+                <span className="text-[10px] font-mono text-stone-400 print:text-stone-500 mt-1">
+                  NPCI UPI Verified
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Payment Status Stamp */}
           <div className="flex items-center justify-between pt-2">

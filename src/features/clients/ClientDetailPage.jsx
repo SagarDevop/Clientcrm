@@ -30,6 +30,7 @@ import {
   ChevronUp,
   Printer,
   FileText,
+  QrCode,
 } from 'lucide-react';
 
 export function ClientDetailPage() {
@@ -398,8 +399,21 @@ export function ClientDetailPage() {
           </div>
 
           <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 col-span-2 sm:col-span-1">
-            <span className="text-[10px] uppercase font-bold text-rose-500 block">Remaining Due</span>
-            <span className="text-base sm:text-lg font-bold font-mono text-rose-600 dark:text-rose-400">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-bold text-rose-500 block">Remaining Due</span>
+              {remainingAmount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsReceiptOpen(true)}
+                  className="text-[10px] font-bold text-rose-700 dark:text-rose-300 hover:underline inline-flex items-center gap-0.5"
+                  title="Scan UPI QR or generate invoice"
+                >
+                  <QrCode className="w-3 h-3" />
+                  <span>UPI QR</span>
+                </button>
+              )}
+            </div>
+            <span className="text-base sm:text-lg font-bold font-mono text-rose-600 dark:text-rose-400 block mt-0.5">
               ₹{remainingAmount.toLocaleString()}
             </span>
           </div>
@@ -417,17 +431,28 @@ export function ClientDetailPage() {
 
           <div className="flex items-center space-x-2 mt-2 sm:mt-0">
             {remainingAmount > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setPayAmount(String(remainingAmount));
-                  setIsRecordPaymentOpen(true);
-                }}
-                className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-colors shadow-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Record Payment</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsReceiptOpen(true)}
+                  className="inline-flex items-center space-x-1 px-2.5 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-100/80 dark:bg-rose-950/60 hover:bg-rose-200/80 rounded-xl transition-colors"
+                  title="Scan UPI QR or print invoice"
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span>UPI QR</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPayAmount(String(remainingAmount));
+                    setIsRecordPaymentOpen(true);
+                  }}
+                  className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-colors shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Record Payment</span>
+                </button>
+              </>
             )}
 
             <button

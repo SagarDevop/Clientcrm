@@ -38,7 +38,9 @@ import {
   Send,
   ExternalLink,
   ShieldCheck,
+  QrCode,
 } from 'lucide-react';
+import { getSavedUpiId, getSavedUpiName } from '../../utils/upi.js';
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -61,6 +63,20 @@ export function SettingsPage() {
   const [workerHealth, setWorkerHealth] = useState(null);
   const [isTestingWorker, setIsTestingWorker] = useState(false);
   const [workerTestResult, setWorkerTestResult] = useState('');
+
+  // UPI Payment Gateway State
+  const [upiIdInput, setUpiIdInput] = useState(() => getSavedUpiId());
+  const [upiNameInput, setUpiNameInput] = useState(() => getSavedUpiName());
+  const [upiSavedFeedback, setUpiSavedFeedback] = useState('');
+
+  const handleSaveUpi = (e) => {
+    e.preventDefault();
+    if (!upiIdInput.trim()) return;
+    localStorage.setItem('bizcrm_upi_id', upiIdInput.trim());
+    localStorage.setItem('bizcrm_upi_name', upiNameInput.trim() || 'Jugarr Agency');
+    setUpiSavedFeedback('UPI Payment details saved! Live QR & payment links updated.');
+    setTimeout(() => setUpiSavedFeedback(''), 3000);
+  };
 
   const handleSaveBrevoKey = () => {
     if (brevoKeyInput.trim()) {
@@ -433,6 +449,69 @@ export function SettingsPage() {
             </ul>
           </div>
         </div>
+      </div>
+
+      {/* 2.5 🇮🇳 Instant UPI Payment Gateway (Direct Bank Settlement) */}
+      <div className="p-5 bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xs space-y-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+              <QrCode className="w-4 h-4 text-emerald-600" />
+              🇮🇳 Instant UPI Payment QR Code & 1-Tap Links
+            </h2>
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+              Zero transaction fees. Generates live QR codes on PDF receipts & WhatsApp payment links.
+            </p>
+          </div>
+          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+            0% Fee Direct Settlement
+          </span>
+        </div>
+
+        <form onSubmit={handleSaveUpi} className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Your UPI ID (VPA) <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. 9876543210@paytm or yourname@okaxis"
+                value={upiIdInput}
+                onChange={(e) => setUpiIdInput(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 font-mono"
+              />
+              <span className="text-[10px] text-stone-400">Works with GPay, PhonePe, Paytm, BHIM, CRED</span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                UPI Payee / Agency Name
+              </label>
+              <input
+                type="text"
+                placeholder="Jugarr Agency"
+                value={upiNameInput}
+                onChange={(e) => setUpiNameInput(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800"
+              />
+              <span className="text-[10px] text-stone-400">Shown to client on payment screen</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              {upiSavedFeedback}
+            </span>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition-colors"
+            >
+              Save UPI Settings
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* 3. Storage Durability & Persistence */}

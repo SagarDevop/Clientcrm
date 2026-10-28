@@ -1,4 +1,5 @@
 import { normalizePhone } from './id.js';
+import { buildUpiLink, getSavedUpiId, getSavedUpiName } from './upi.js';
 
 /**
  * WhatsApp Click-to-Chat Utility
@@ -28,8 +29,16 @@ export const WHATSAPP_TEMPLATES = {
   onboardingWelcome: ({ clientName, businessName, packageName, startDate, completionDate, planAmount, tokenPaid, remainingAmount, currency = '₹' }) =>
     `Hello ${clientName || 'there'}, welcome onboard! 🚀\n\nWe are excited to start working with *${businessName || 'your business'}*. Your service plan has officially started.\n\n📋 *Plan Details:*\n• Service: *${packageName || 'Monthly Service Package'}*\n• Monthly Plan: *${currency}${Number(planAmount || 0).toLocaleString()}*\n• Token Received: *${currency}${Number(tokenPaid || 0).toLocaleString()}*\n• Remaining Due: *${currency}${Number(remainingAmount || 0).toLocaleString()}*\n• Service Period: *${startDate || 'Today'}* to *${completionDate || '1 Month'}*\n\nPlease feel free to reach out anytime. Looking forward to driving great results together!\n\nBest regards,\n*Jugarr Agency*`,
 
-  balanceDue: ({ clientName, businessName, planAmount, remainingAmount, completionDate, currency = '₹' }) =>
-    `Hi ${clientName || 'there'},\n\nHope you are having a productive week! This is a gentle reminder regarding the remaining balance for your monthly service plan for *${businessName || 'your business'}*.\n\n💰 *Payment Details:*\n• Monthly Plan: *${currency}${Number(planAmount || 0).toLocaleString()}*\n• Remaining Due: *${currency}${Number(remainingAmount || 0).toLocaleString()}*\n• Plan Active Till: *${completionDate || 'Month End'}*\n\nKindly share the confirmation once the remaining amount is transferred. Please let us know if you need our UPI or account details.\n\nThank you,\n*Jugarr Agency*`,
+  balanceDue: ({ clientName, businessName, planAmount, remainingAmount, completionDate, upiLink, upiId, currency = '₹' }) => {
+    let msg = `Hi ${clientName || 'there'},\n\nHope you are having a productive week! This is a gentle reminder regarding the remaining balance for your monthly service plan for *${businessName || 'your business'}*.\n\n💰 *Payment Details:*\n• Monthly Plan: *${currency}${Number(planAmount || 0).toLocaleString()}*\n• Remaining Due: *${currency}${Number(remainingAmount || 0).toLocaleString()}*\n• Plan Active Till: *${completionDate || 'Month End'}*`;
+
+    if (upiLink && upiId) {
+      msg += `\n\n📲 *Pay Instantly via UPI (GPay / PhonePe / Paytm):*\nUPI ID: *${upiId}*\n${upiLink}`;
+    }
+
+    msg += `\n\nKindly share the confirmation once the remaining amount is transferred. Please let us know if you need our bank or account details.\n\nThank you,\n*Jugarr Agency*`;
+    return msg;
+  },
 
   renewal: ({ clientName, businessName, packageName, planAmount, completionDate, currency = '₹' }) =>
     `Hello ${clientName || 'there'},\n\nWe would like to remind you that your monthly service plan for *${businessName || 'your business'}* is completing on *${completionDate || 'soon'}*.\n\n🎯 *Renewal Summary:*\n• Service: *${packageName || 'Monthly Service Plan'}*\n• Next Month Retainer: *${currency}${Number(planAmount || 0).toLocaleString()}*\n\nWe would love to continue managing your services for next month! Please confirm your renewal so we can reserve your slot and maintain seamless continuation.\n\nWarm regards,\n*Jugarr Agency*`,
@@ -60,6 +69,15 @@ export function getClientWhatsAppMessage(templateKey, client) {
   const remainingAmount = Number(client.remainingAmount !== undefined ? client.remainingAmount : Math.max(0, planAmount - totalPaid));
   const packageName = client.packageDescription?.slice(0, 50) || 'Monthly Service Package';
 
+  const upiId = getSavedUpiId();
+  const upiName = getSavedUpiName();
+  const upiLink = buildUpiLink({
+    upiId,
+    payeeName: upiName,
+    amount: remainingAmount,
+    transactionNote: `Plan - ${client.name}`,
+  });
+
   const data = {
     clientName: client.name,
     businessName: client.businessName,
@@ -69,6 +87,8 @@ export function getClientWhatsAppMessage(templateKey, client) {
     planAmount,
     tokenPaid,
     remainingAmount,
+    upiId,
+    upiLink,
     currency: '₹',
   };
 
