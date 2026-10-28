@@ -58,7 +58,7 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
     }
     setWarnings([]);
     setError('');
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, todayStr]);
 
   // Live Calculations
   const planNum = Math.max(0, Number(formData.monthlyPlanAmount) || 0);

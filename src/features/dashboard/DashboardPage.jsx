@@ -15,7 +15,6 @@ import {
   Share2,
   Mail,
   CheckCircle2,
-  Calendar,
 } from 'lucide-react';
 
 export function DashboardPage() {
