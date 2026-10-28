@@ -9,8 +9,17 @@
 import { db } from '../db/database.js';
 import { generateId } from './id.js';
 
-const DEFAULT_BREVO_KEY =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BREVO_API_KEY) || '';
+export function getBrevoApiKey() {
+  if (typeof window !== 'undefined') {
+    const custom = localStorage.getItem('bizcrm_brevo_api_key');
+    if (custom && custom.trim()) return custom.trim();
+  }
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BREVO_API_KEY) {
+    return import.meta.env.VITE_BREVO_API_KEY.trim();
+  }
+  return '';
+}
+
 const DEFAULT_SENDER_NAME = 'Jugarr Agency';
 const DEFAULT_SENDER_EMAIL = 'warshasingh21@gmail.com';
 
@@ -71,6 +80,7 @@ export async function dispatchEmail({
   }
 
   const endpoint = `${getEmailDispatcherUrl()}/api/send-email`;
+  const resolvedKey = getBrevoApiKey();
 
   const payload = {
     toEmail: toEmail.trim().toLowerCase(),
@@ -79,14 +89,20 @@ export async function dispatchEmail({
     htmlContent,
     templateType,
     templateData,
+    apiKey: resolvedKey,
   };
+
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (resolvedKey) {
+    headers['x-brevo-key'] = resolvedKey;
+  }
 
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(payload),
     });
 
@@ -95,14 +111,8 @@ export async function dispatchEmail({
       return result;
     }
 
-    // If endpoint returns 404 (e.g. running on static Vercel build before serverless function is deployed),
-    // immediately fallback to direct Brevo API call so emails NEVER fail!
-    if (response.status === 404 || response.status === 502) {
-      return await dispatchDirectToBrevo(payload);
-    }
-
-    const result = await response.json().catch(() => ({}));
-    throw new Error(result.error || result.message || `Dispatch failed with status ${response.status}`);
+    // If endpoint returns 404 or 500, immediately fallback to direct Brevo API call so emails NEVER fail!
+    return await dispatchDirectToBrevo(payload);
   } catch (err) {
     // If network or endpoint error, attempt direct fallback
     if (err.message && !err.message.includes('Recipient email is required')) {
@@ -117,15 +127,17 @@ export async function dispatchEmail({
 }
 
 async function dispatchDirectToBrevo(payload) {
-  const apiKey =
-    (typeof window !== 'undefined' && localStorage.getItem('bizcrm_brevo_api_key')) ||
-    DEFAULT_BREVO_KEY;
+  const apiKey = getBrevoApiKey();
   const senderName =
     (typeof window !== 'undefined' && localStorage.getItem('bizcrm_sender_name')) ||
     DEFAULT_SENDER_NAME;
   const senderEmail =
     (typeof window !== 'undefined' && localStorage.getItem('bizcrm_sender_email')) ||
     DEFAULT_SENDER_EMAIL;
+
+  if (!apiKey) {
+    throw new Error('Email service unconfigured: Missing Brevo API Key');
+  }
 
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',

@@ -2,6 +2,20 @@
  * Vercel Serverless Function: /api/send-email
  * Dispatches transactional emails via Brevo HTTP API
  */
+function resolveApiKey(req, body) {
+  if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim()) {
+    return process.env.BREVO_API_KEY.trim();
+  }
+  const headerKey = req.headers?.['x-brevo-key'];
+  if (headerKey && typeof headerKey === 'string' && headerKey.trim()) {
+    return headerKey.trim();
+  }
+  if (body?.apiKey && typeof body.apiKey === 'string' && body.apiKey.trim()) {
+    return body.apiKey.trim();
+  }
+  return '';
+}
+
 export default async function handler(req, res) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -9,7 +23,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-brevo-key'
   );
 
   if (req.method === 'OPTIONS') {
@@ -37,7 +51,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Recipient email is required' });
     }
 
-    const apiKey = process.env.BREVO_API_KEY;
+    const apiKey = resolveApiKey(req, body);
     const senderName = process.env.SENDER_NAME || 'Jugarr Agency';
     const senderEmail = process.env.SENDER_EMAIL || 'warshasingh21@gmail.com';
 

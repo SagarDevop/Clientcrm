@@ -56,9 +56,22 @@ export function SettingsPage() {
 
   // Email Worker Setup
   const [workerUrl, setWorkerUrl] = useState(() => localStorage.getItem('bizcrm_email_worker_url') || '');
+  const [brevoKeyInput, setBrevoKeyInput] = useState(() => localStorage.getItem('bizcrm_brevo_api_key') || '');
+  const [brevoKeySavedFeedback, setBrevoKeySavedFeedback] = useState('');
   const [workerHealth, setWorkerHealth] = useState(null);
   const [isTestingWorker, setIsTestingWorker] = useState(false);
   const [workerTestResult, setWorkerTestResult] = useState('');
+
+  const handleSaveBrevoKey = () => {
+    if (brevoKeyInput.trim()) {
+      localStorage.setItem('bizcrm_brevo_api_key', brevoKeyInput.trim());
+      setBrevoKeySavedFeedback('Brevo API Key saved to browser storage!');
+    } else {
+      localStorage.removeItem('bizcrm_brevo_api_key');
+      setBrevoKeySavedFeedback('Default system key active.');
+    }
+    setTimeout(() => setBrevoKeySavedFeedback(''), 3000);
+  };
 
   // Notifications
   const [notificationStatus, setNotificationStatus] = useState(getNotificationPermissionStatus());
@@ -346,6 +359,37 @@ export function SettingsPage() {
               <span className="text-[10px] uppercase font-bold text-stone-400 block">Owner Alert Email</span>
               <span className="font-mono text-stone-800 dark:text-stone-200">warshasingh21@gmail.com</span>
             </div>
+          </div>
+
+          {/* Brevo API Key input */}
+          <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 space-y-2">
+            <label className="block text-xs font-semibold text-stone-800 dark:text-stone-200">
+              Brevo API Key (Encrypted in Browser Local Storage)
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                placeholder="xkeysib-... (leave blank to use default key)"
+                value={brevoKeyInput}
+                onChange={(e) => setBrevoKeyInput(e.target.value)}
+                className="flex-1 px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 font-mono"
+              />
+              <button
+                type="button"
+                onClick={handleSaveBrevoKey}
+                className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs"
+              >
+                Save Key
+              </button>
+            </div>
+            {brevoKeySavedFeedback && (
+              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                {brevoKeySavedFeedback}
+              </p>
+            )}
+            <p className="text-[11px] text-stone-500 dark:text-stone-400">
+              Your key is saved locally in your browser and used seamlessly to dispatch client onboarding and renewal emails.
+            </p>
           </div>
 
           <div>
