@@ -4,12 +4,14 @@ import { useClients } from '../../hooks/useClients.js';
 import { ClientFormModal } from '../../components/forms/ClientFormModal.jsx';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner.jsx';
 import { EmptyState } from '../../components/common/EmptyState.jsx';
-import { Users, Search, Plus, ChevronRight, Calendar, DollarSign, Clock } from 'lucide-react';
+import { WhatsAppModal } from '../../components/common/WhatsAppModal.jsx';
+import { Users, Search, Plus, ChevronRight, Calendar, DollarSign, Clock, Share2 } from 'lucide-react';
 
 export function ClientsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'completed' | 'inactive' | ''
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedWhatsAppClient, setSelectedWhatsAppClient] = useState(null);
 
   const { clients, isLoading } = useClients({
     status: statusFilter,
@@ -173,9 +175,22 @@ export function ClientsPage() {
                       {client.startDate || '—'} &rarr; <strong>{client.completionDate || '—'}</strong>
                     </span>
                   </div>
-                  <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-semibold group-hover:translate-x-0.5 transition-transform">
-                    View &rarr;
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedWhatsAppClient(client);
+                      }}
+                      className="p-1 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
+                      title="Send WhatsApp message"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-semibold group-hover:translate-x-0.5 transition-transform">
+                      View &rarr;
+                    </span>
+                  </div>
                 </div>
               </div>
             );
@@ -188,6 +203,18 @@ export function ClientsPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSaved={(c) => navigate(`/clients/${c.id}`)}
+      />
+
+      {/* 3-in-1 WhatsApp Smart Messenger Modal */}
+      <WhatsAppModal
+        isOpen={Boolean(selectedWhatsAppClient)}
+        onClose={() => setSelectedWhatsAppClient(null)}
+        client={selectedWhatsAppClient}
+        defaultTemplate={
+          selectedWhatsAppClient && Number(selectedWhatsAppClient.remainingAmount || 0) > 0
+            ? 'balance'
+            : 'renewal'
+        }
       />
     </div>
   );

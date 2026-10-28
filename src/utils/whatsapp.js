@@ -24,6 +24,17 @@ export function generateWhatsAppLink(phone, message) {
 }
 
 export const WHATSAPP_TEMPLATES = {
+  // BizCRM 3 Smart Templates
+  onboardingWelcome: ({ clientName, businessName, packageName, startDate, completionDate, planAmount, tokenPaid, remainingAmount, currency = '₹' }) =>
+    `Hello ${clientName || 'there'}, welcome onboard! 🚀\n\nWe are excited to start working with *${businessName || 'your business'}*. Your service plan has officially started.\n\n📋 *Plan Details:*\n• Service: *${packageName || 'Monthly Service Package'}*\n• Monthly Plan: *${currency}${Number(planAmount || 0).toLocaleString()}*\n• Token Received: *${currency}${Number(tokenPaid || 0).toLocaleString()}*\n• Remaining Due: *${currency}${Number(remainingAmount || 0).toLocaleString()}*\n• Service Period: *${startDate || 'Today'}* to *${completionDate || '1 Month'}*\n\nPlease feel free to reach out anytime. Looking forward to driving great results together!\n\nBest regards,\n*Jugarr Agency*`,
+
+  balanceDue: ({ clientName, businessName, planAmount, remainingAmount, completionDate, currency = '₹' }) =>
+    `Hi ${clientName || 'there'},\n\nHope you are having a productive week! This is a gentle reminder regarding the remaining balance for your monthly service plan for *${businessName || 'your business'}*.\n\n💰 *Payment Details:*\n• Monthly Plan: *${currency}${Number(planAmount || 0).toLocaleString()}*\n• Remaining Due: *${currency}${Number(remainingAmount || 0).toLocaleString()}*\n• Plan Active Till: *${completionDate || 'Month End'}*\n\nKindly share the confirmation once the remaining amount is transferred. Please let us know if you need our UPI or account details.\n\nThank you,\n*Jugarr Agency*`,
+
+  renewal: ({ clientName, businessName, packageName, planAmount, completionDate, currency = '₹' }) =>
+    `Hello ${clientName || 'there'},\n\nWe would like to remind you that your monthly service plan for *${businessName || 'your business'}* is completing on *${completionDate || 'soon'}*.\n\n🎯 *Renewal Summary:*\n• Service: *${packageName || 'Monthly Service Plan'}*\n• Next Month Retainer: *${currency}${Number(planAmount || 0).toLocaleString()}*\n\nWe would love to continue managing your services for next month! Please confirm your renewal so we can reserve your slot and maintain seamless continuation.\n\nWarm regards,\n*Jugarr Agency*`,
+
+  // Legacy fallback templates
   invoiceReminder: ({ clientName, invoiceNumber, amount, dueDate, currency = '₹' }) =>
     `Hello ${clientName || 'there'},\n\nThis is a friendly reminder regarding Invoice *${invoiceNumber}* for *${currency}${amount}*, due on *${dueDate}*.\n\nPlease let us know once the payment has been processed. Thank you for your partnership!`,
 
@@ -39,3 +50,35 @@ export const WHATSAPP_TEMPLATES = {
   projectMilestone: ({ clientName, projectName, milestoneTitle, amount, currency = '₹' }) =>
     `Hello ${clientName || 'there'},\n\nGreat news! Milestone *${milestoneTitle}* for *${projectName}* is now ready for review.${amount ? ` Milestone amount: *${currency}${amount}*.` : ''}\n\nThank you for working with us!`,
 };
+
+export function getClientWhatsAppMessage(templateKey, client) {
+  if (!client) return '';
+  const planAmount = Number(client.monthlyPlanAmount || 0);
+  const tokenPaid = Number(client.tokenPaid || 0);
+  const additionalPaid = Number(client.additionalPaid || 0);
+  const totalPaid = Number(client.totalPaid || tokenPaid + additionalPaid);
+  const remainingAmount = Number(client.remainingAmount !== undefined ? client.remainingAmount : Math.max(0, planAmount - totalPaid));
+  const packageName = client.packageDescription?.slice(0, 50) || 'Monthly Service Package';
+
+  const data = {
+    clientName: client.name,
+    businessName: client.businessName,
+    packageName,
+    startDate: client.startDate,
+    completionDate: client.completionDate,
+    planAmount,
+    tokenPaid,
+    remainingAmount,
+    currency: '₹',
+  };
+
+  switch (templateKey) {
+    case 'onboarding':
+      return WHATSAPP_TEMPLATES.onboardingWelcome(data);
+    case 'balance':
+      return WHATSAPP_TEMPLATES.balanceDue(data);
+    case 'renewal':
+    default:
+      return WHATSAPP_TEMPLATES.renewal(data);
+  }
+}

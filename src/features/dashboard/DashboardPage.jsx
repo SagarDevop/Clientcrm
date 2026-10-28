@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useClients } from '../../hooks/useClients.js';
 import { ClientFormModal } from '../../components/forms/ClientFormModal.jsx';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner.jsx';
+import { WhatsAppModal } from '../../components/common/WhatsAppModal.jsx';
 import { generateWhatsAppLink, WHATSAPP_TEMPLATES } from '../../utils/whatsapp.js';
 import { sendClientCompletionEmails } from '../../utils/email.js';
 import {
@@ -23,6 +24,7 @@ export function DashboardPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [completionSendingId, setCompletionSendingId] = useState(null);
   const [completionFeedback, setCompletionFeedback] = useState(null);
+  const [selectedWhatsAppClient, setSelectedWhatsAppClient] = useState(null);
 
   if (isLoading) {
     return <LoadingSpinner text="Loading dashboard..." size="lg" className="min-h-[50vh]" />;
@@ -260,18 +262,17 @@ export function DashboardPage() {
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    {whatsappUrl && (
-                      <a
-                        href={whatsappUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center space-x-1 px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg"
-                      >
-                        <Share2 className="w-3.5 h-3.5" />
-                        <span>WhatsApp</span>
-                      </a>
-                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedWhatsAppClient(client);
+                      }}
+                      className="inline-flex items-center space-x-1 px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 rounded-lg transition-colors"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>WhatsApp (3-in-1)</span>
+                    </button>
 
                     <button
                       type="button"
@@ -363,6 +364,18 @@ export function DashboardPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSaved={(c) => navigate(`/clients/${c.id}`)}
+      />
+
+      {/* 3-in-1 WhatsApp Smart Messenger Modal */}
+      <WhatsAppModal
+        isOpen={Boolean(selectedWhatsAppClient)}
+        onClose={() => setSelectedWhatsAppClient(null)}
+        client={selectedWhatsAppClient}
+        defaultTemplate={
+          selectedWhatsAppClient && Number(selectedWhatsAppClient.remainingAmount || 0) > 0
+            ? 'balance'
+            : 'renewal'
+        }
       />
     </div>
   );

@@ -9,6 +9,8 @@ import { sendClientOnboardingEmails, sendClientCompletionEmails } from '../../ut
 import { ClientFormModal } from '../../components/forms/ClientFormModal.jsx';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
+import { WhatsAppModal } from '../../components/common/WhatsAppModal.jsx';
+import { ClientReceiptModal } from '../../components/common/ClientReceiptModal.jsx';
 import {
   ArrowLeft,
   Edit2,
@@ -26,6 +28,8 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  Printer,
+  FileText,
 } from 'lucide-react';
 
 export function ClientDetailPage() {
@@ -60,6 +64,11 @@ export function ClientDetailPage() {
 
   // Show past periods toggle
   const [showPastPeriods, setShowPastPeriods] = useState(false);
+
+  // 3-in-1 WhatsApp & Printable Receipt Modal States
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+  const [whatsAppTemplate, setWhatsAppTemplate] = useState('renewal');
 
   // Load payment history
   const loadPayments = async () => {
@@ -315,17 +324,28 @@ export function ClientDetailPage() {
           </div>
         </div>
 
-        {whatsappReminderUrl && (
-          <a
-            href={whatsappReminderUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 rounded-xl transition-colors"
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={() => {
+              setWhatsAppTemplate(remainingAmount > 0 ? 'balance' : 'renewal');
+              setIsWhatsAppOpen(true);
+            }}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 rounded-xl transition-colors min-touch-target"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Send WhatsApp Reminder</span>
-          </a>
-        )}
+            <span>WhatsApp (3-in-1)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsReceiptOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-stone-800 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700 rounded-xl transition-colors min-touch-target"
+          >
+            <Printer className="w-3.5 h-3.5 text-stone-500" />
+            <span>Receipt / Invoice</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. Monthly Plan & Financial Balance Breakdown */}
@@ -513,18 +533,28 @@ export function ClientDetailPage() {
           <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100">
             Payment History ({paymentHistory.length})
           </h2>
-          {remainingAmount > 0 && (
+          <div className="flex items-center space-x-3">
             <button
               type="button"
-              onClick={() => {
-                setPayAmount(String(remainingAmount));
-                setIsRecordPaymentOpen(true);
-              }}
-              className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+              onClick={() => setIsReceiptOpen(true)}
+              className="text-xs font-semibold text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 flex items-center gap-1"
             >
-              + Record Payment
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print Receipt</span>
             </button>
-          )}
+            {remainingAmount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPayAmount(String(remainingAmount));
+                  setIsRecordPaymentOpen(true);
+                }}
+                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                + Record Payment
+              </button>
+            )}
+          </div>
         </div>
 
         {paymentHistory.length === 0 ? (
@@ -765,6 +795,27 @@ export function ClientDetailPage() {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         initialData={client}
+      />
+
+      {/* Printable Receipt & Invoice Modal */}
+      <ClientReceiptModal
+        isOpen={isReceiptOpen}
+        onClose={() => setIsReceiptOpen(false)}
+        client={client}
+        payments={paymentHistory}
+        onOpenWhatsApp={() => {
+          setIsReceiptOpen(false);
+          setWhatsAppTemplate(remainingAmount > 0 ? 'balance' : 'renewal');
+          setIsWhatsAppOpen(true);
+        }}
+      />
+
+      {/* 3-in-1 WhatsApp Smart Messenger Modal */}
+      <WhatsAppModal
+        isOpen={isWhatsAppOpen}
+        onClose={() => setIsWhatsAppOpen(false)}
+        client={client}
+        defaultTemplate={whatsAppTemplate}
       />
     </div>
   );
