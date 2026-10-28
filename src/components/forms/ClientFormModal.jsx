@@ -4,6 +4,7 @@ import { useClients } from '../../hooks/useClients.js';
 import { getNextBillingDateISO } from '../../utils/dates.js';
 import { roundMoney } from '../../utils/finance.js';
 import { sendClientOnboardingEmails } from '../../utils/email.js';
+import { PackageBuilder } from './PackageBuilder.jsx';
 import { AlertCircle, CheckCircle2, DollarSign, Calendar, Sparkles, Loader2 } from 'lucide-react';
 
 export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }) {
@@ -360,23 +361,11 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
           </>
         )}
 
-        {/* 4. Service Description & Package Details */}
-        <div>
-          <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-            Service Description & Package Details <span className="text-rose-500">*</span>
-          </label>
-          <textarea
-            required
-            rows={4}
-            placeholder="Write what is included in their monthly package (e.g. 15 Instagram Reels, daily stories, website maintenance, ad campaign setup)... Line breaks and paragraphs will be preserved in the onboarding email."
-            value={formData.packageDescription}
-            onChange={(e) => setFormData({ ...formData, packageDescription: e.target.value })}
-            className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 focus:ring-2 focus:ring-emerald-500 leading-relaxed font-sans"
-          />
-          <span className="text-[10px] text-stone-400">
-            This paragraph will be directly included in the client's Welcome Onboard email.
-          </span>
-        </div>
+        {/* 4. Structured Service Description & Package Deliverables Builder */}
+        <PackageBuilder
+          value={formData.packageDescription}
+          onChange={(newVal) => setFormData((prev) => ({ ...prev, packageDescription: newVal }))}
+        />
 
         {/* 5. Additional Notes (Optional) */}
         <div>
