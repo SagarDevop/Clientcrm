@@ -31,7 +31,17 @@ export const projectsRepo = {
     return database.projects.get(id);
   },
 
-  async create(data, { templateId } = {}, database = db) {
+  async create(data, optionsOrDb = {}, databaseArg = undefined) {
+    let templateId = null;
+    let database = db;
+
+    if (optionsOrDb && optionsOrDb.projects) {
+      database = optionsOrDb;
+    } else {
+      templateId = optionsOrDb?.templateId || null;
+      database = databaseArg || db;
+    }
+
     return database.transaction('rw', [database.projects, database.tasks], async () => {
       const now = new Date().toISOString();
       const id = data.id || generateId();

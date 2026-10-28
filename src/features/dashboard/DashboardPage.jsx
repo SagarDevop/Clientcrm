@@ -1,416 +1,370 @@
-import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useDashboard } from '../../hooks/useDashboard.js';
-import { formatCurrency, formatDate, formatRelativeDate, getLeadStageBadgeColor, getLeadStageLabel } from '../../utils/formatters.js';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useClients } from '../../hooks/useClients.js';
+import { ClientFormModal } from '../../components/forms/ClientFormModal.jsx';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner.jsx';
+import { generateWhatsAppLink, WHATSAPP_TEMPLATES } from '../../utils/whatsapp.js';
+import { sendClientCompletionEmails } from '../../utils/email.js';
 import {
   Users,
-  UserPlus,
-  Calendar,
-  AlertTriangle,
-  CheckSquare,
   DollarSign,
+  AlertTriangle,
+  Clock,
   ArrowRight,
-  PhoneCall,
-  FolderKanban,
-  Sparkles,
+  Plus,
+  Share2,
+  Mail,
+  CheckCircle2,
+  Calendar,
 } from 'lucide-react';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner.jsx';
-import { EmptyState } from '../../components/common/EmptyState.jsx';
 
 export function DashboardPage() {
-  const { dashboard, isLoading } = useDashboard();
   const navigate = useNavigate();
+  const { clients, isLoading } = useClients();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [completionSendingId, setCompletionSendingId] = useState(null);
+  const [completionFeedback, setCompletionFeedback] = useState(null);
 
   if (isLoading) {
-    return <LoadingSpinner text="Loading your dashboard..." size="lg" className="min-h-[50vh]" />;
+    return <LoadingSpinner text="Loading dashboard..." size="lg" className="min-h-[50vh]" />;
   }
 
-  const { counts, lists, isNewInstallation } = dashboard;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const sevenDaysLaterStr = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
-  if (isNewInstallation) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xs">
-          <div className="max-w-xl">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 mb-3">
-              <Sparkles className="w-3.5 h-3.5 mr-1 text-brand-600" /> Private & Local-First CRM
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-2">
-              Welcome to your Personal CRM
-            </h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
-              A private, mobile-first workspace for solo operators to track clients, pipeline deals, project deliverables, and incoming payments locally.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => navigate('/leads')}
-                className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm transition-colors min-touch-target shadow-xs"
-              >
-                + Add Your First Lead
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/clients')}
-                className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/70 dark:hover:bg-slate-700/60 text-slate-800 dark:text-slate-200 font-medium text-sm transition-colors min-touch-target"
-              >
-                + Add Existing Client
-              </button>
-            </div>
-          </div>
-        </div>
+  const activeClients = clients.filter((c) => c.status === 'active');
 
-        <EmptyState
-          icon={Users}
-          title="No business activity recorded yet"
-          description="All your clients, sales stages, tasks, and payments will show up live right here with zero cloud latency."
-          actionLabel="Explore Services"
-          onAction={() => navigate('/services')}
-        />
-      </div>
-    );
-  }
+  // Metrics
+  const totalMonthlyContracted = activeClients.reduce(
+    (sum, c) => sum + (Number(c.monthlyPlanAmount) || 0),
+    0
+  );
+
+  const totalPaymentsReceived = activeClients.reduce(
+    (sum, c) => sum + (Number(c.totalPaid) || (Number(c.tokenPaid) || 0) + (Number(c.additionalPaid) || 0)),
+    0
+  );
+
+  const totalRemainingDue = activeClients.reduce(
+    (sum, c) =>
+      sum +
+      Math.max(
+        0,
+        Number(
+          c.remainingAmount !== undefined
+            ? c.remainingAmount
+            : (Number(c.monthlyPlanAmount) || 0) - (Number(c.totalPaid) || 0)
+        )
+      ),
+    0
+  );
+
+  // Expiring Soon (Within 7 days or overdue)
+  const expiringClients = activeClients.filter((c) => {
+    if (!c.completionDate) return false;
+    return c.completionDate <= sevenDaysLaterStr;
+  });
+
+  // Recently Onboarded (last 5)
+  const recentClients = [...clients]
+    .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate))
+    .slice(0, 5);
+
+  const handleSendCompletion = async (e, client) => {
+    e.stopPropagation();
+    try {
+      setCompletionSendingId(client.id);
+      setCompletionFeedback(null);
+      const res = await sendClientCompletionEmails({ client, forceRetry: true });
+      if (res.clientSent) {
+        setCompletionFeedback({ type: 'success', text: `Completion notice sent to ${client.email}` });
+      } else {
+        setCompletionFeedback({ type: 'error', text: res.errors?.join('; ') || 'Failed to dispatch email' });
+      }
+    } catch (err) {
+      setCompletionFeedback({ type: 'error', text: err.message });
+    } finally {
+      setCompletionSendingId(null);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Top Greeting & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Top Welcome Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-            Business Overview
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
+            Client & Monthly Plan Tracker
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Live local data • {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+          <p className="text-xs text-stone-500 dark:text-stone-400">
+            Active clients, monthly contracted retainers, token collections, and automatic emails
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={() => navigate('/tasks')}
-            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors min-touch-target flex items-center"
-          >
-            <CheckSquare className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-            Today's Tasks ({counts.pendingTasksToday})
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/leads')}
-            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 transition-colors min-touch-target flex items-center shadow-xs"
-          >
-            <UserPlus className="w-3.5 h-3.5 mr-1.5" />
-            Pipeline ({counts.openLeads})
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsAddModalOpen(true)}
+          className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm transition-all shadow-xs"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Add Client</span>
+        </button>
       </div>
 
-      {/* Overdue Alert Banner if any overdue items */}
-      {(counts.overdueFollowUps > 0 || counts.overdueTasksCount > 0) && (
-        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start space-x-3">
-            <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex-shrink-0">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-amber-900 dark:text-amber-200">
-                Action Required: Overdue Items
-              </h2>
-              <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
-                {counts.overdueFollowUps > 0 && `${counts.overdueFollowUps} overdue lead follow-up${counts.overdueFollowUps > 1 ? 's' : ''}`}
-                {counts.overdueFollowUps > 0 && counts.overdueTasksCount > 0 && ' and '}
-                {counts.overdueTasksCount > 0 && `${counts.overdueTasksCount} overdue task${counts.overdueTasksCount > 1 ? 's' : ''}`}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            {counts.overdueFollowUps > 0 && (
-              <button
-                type="button"
-                onClick={() => navigate('/leads?filter=overdue')}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors"
-              >
-                Review Follow-ups
-              </button>
-            )}
-            {counts.overdueTasksCount > 0 && (
-              <button
-                type="button"
-                onClick={() => navigate('/tasks?filter=overdue')}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 hover:bg-amber-100/50 transition-colors"
-              >
-                Review Tasks
-              </button>
-            )}
-          </div>
+      {completionFeedback && (
+        <div
+          className={`p-3 rounded-2xl text-xs font-medium flex items-center justify-between ${
+            completionFeedback.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200'
+              : 'bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200'
+          }`}
+        >
+          <span>{completionFeedback.text}</span>
+          <button
+            type="button"
+            onClick={() => setCompletionFeedback(null)}
+            className="underline opacity-75 hover:opacity-100 ml-3"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
-      {/* Key Metric Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Active Clients */}
+      {/* 4 Minimal Metric Cards Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* 1. Total Active Clients */}
         <div
           onClick={() => navigate('/clients')}
-          className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 cursor-pointer transition-colors shadow-xs group"
+          className="p-4 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-emerald-500 cursor-pointer transition-colors shadow-xs"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Active Clients</span>
-            <div className="p-2 rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
+            <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Active Clients</span>
+            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{counts.activeClients}</div>
-          <div className="text-[11px] text-slate-400 mt-1 flex items-center">
-            View roster <ArrowRight className="w-3 h-3 ml-1" />
+          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100">{activeClients.length}</div>
+          <div className="text-[11px] text-stone-400 mt-1 flex items-center">
+            View active clients &rarr;
           </div>
         </div>
 
-        {/* Open Leads */}
+        {/* 2. Total Monthly Contracted */}
         <div
-          onClick={() => navigate('/leads')}
-          className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 cursor-pointer transition-colors shadow-xs group"
+          onClick={() => navigate('/clients')}
+          className="p-4 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-emerald-500 cursor-pointer transition-colors shadow-xs"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Open Leads</span>
-            <div className="p-2 rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
-              <UserPlus className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{counts.openLeads}</div>
-          <div className="text-[11px] text-slate-400 mt-1 flex items-center">
-            {counts.wonLeadsCount} won • {counts.conversionRateDecided}% win rate
-          </div>
-        </div>
-
-        {/* Outstanding Receivables */}
-        <div
-          onClick={() => navigate('/payments')}
-          className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 cursor-pointer transition-colors shadow-xs group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Outstanding Balance</span>
-            <div className="p-2 rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+            <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Monthly Contracted</span>
+            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {formatCurrency(counts.outstandingPayments)}
+          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+            ₹{totalMonthlyContracted.toLocaleString()}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1 flex items-center">
-            Collected: {formatCurrency(counts.netCollected)}
-          </div>
+          <div className="text-[11px] text-stone-400 mt-1">Sum of active plans</div>
         </div>
 
-        {/* Today's Tasks */}
+        {/* 3. Payments Received */}
         <div
-          onClick={() => navigate('/tasks?filter=today')}
-          className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 cursor-pointer transition-colors shadow-xs group"
+          onClick={() => navigate('/clients')}
+          className="p-4 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-emerald-500 cursor-pointer transition-colors shadow-xs"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Today's Tasks</span>
-            <div className="p-2 rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
-              <CheckSquare className="w-4 h-4" />
+            <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Payments Received</span>
+            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+              <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{counts.pendingTasksToday}</div>
-          <div className="text-[11px] text-slate-400 mt-1 flex items-center">
-            {counts.completedTasksToday} completed today
+          <div className="text-2xl font-bold font-mono text-emerald-700 dark:text-emerald-300">
+            ₹{totalPaymentsReceived.toLocaleString()}
           </div>
+          <div className="text-[11px] text-stone-400 mt-1">Tokens + additional</div>
+        </div>
+
+        {/* 4. Remaining Payments Due */}
+        <div
+          onClick={() => navigate('/clients')}
+          className="p-4 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-rose-400 cursor-pointer transition-colors shadow-xs"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Remaining Balance Due</span>
+            <div className="p-2 rounded-xl bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold font-mono text-rose-600 dark:text-rose-400">
+            ₹{totalRemainingDue.toLocaleString()}
+          </div>
+          <div className="text-[11px] text-stone-400 mt-1">Across active clients</div>
         </div>
       </div>
 
-      {/* Main Two-Column Dashboard Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Today's Follow-ups & Deliverables */}
-        <div className="space-y-6">
-          {/* Today's Follow-ups */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Calendar className="w-4 h-4 text-brand-600" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  Follow-ups Due Today ({lists.todayFollowUps.length})
-                </h3>
-              </div>
-              <Link
-                to="/leads"
-                className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline flex items-center"
-              >
-                All leads <ArrowRight className="w-3 h-3 ml-1" />
-              </Link>
-            </div>
+      {/* 5. Plans Expiring Soon (Within 7 Days / Today) */}
+      <div className="p-5 bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Clock className="w-4 h-4 text-amber-600" />
+            <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+              Monthly Plans Expiring Soon ({expiringClients.length})
+            </h2>
+          </div>
+          <span className="text-[11px] text-stone-400">Due within 7 days</span>
+        </div>
 
-            {lists.todayFollowUps.length === 0 ? (
-              <p className="text-xs text-slate-400 py-3 text-center">
-                No follow-ups due today. You're completely up to date!
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {lists.todayFollowUps.map((lead) => (
-                  <div
-                    key={lead.id}
-                    onClick={() => navigate(`/leads/${lead.id}`)}
-                    className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-brand-500 bg-slate-50/60 dark:bg-slate-950/40 cursor-pointer flex items-center justify-between transition-colors"
-                  >
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{lead.name}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {lead.businessName ? `${lead.businessName} • ` : ''}{lead.phone}
-                      </div>
+        {expiringClients.length === 0 ? (
+          <p className="text-xs text-stone-400 py-3 text-center">
+            No active client plans expiring within the next 7 days. All plans are on track!
+          </p>
+        ) : (
+          <div className="divide-y divide-stone-100 dark:divide-stone-800">
+            {expiringClients.map((client) => {
+              const remaining = Number(client.remainingAmount || 0);
+              const isOverdue = client.completionDate <= todayStr;
+              const whatsappUrl = client.phone
+                ? generateWhatsAppLink(
+                    client.phone,
+                    WHATSAPP_TEMPLATES.subscriptionRenewal({
+                      clientName: client.name,
+                      planTitle: client.packageDescription?.slice(0, 30) || 'Monthly Service Package',
+                      amount: remaining > 0 ? remaining : client.monthlyPlanAmount,
+                      renewalDate: client.completionDate,
+                    })
+                  )
+                : null;
+
+              return (
+                <div
+                  key={client.id}
+                  onClick={() => navigate(`/clients/${client.id}`)}
+                  className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/40 px-2 rounded-xl transition-colors"
+                >
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                        {client.name}
+                      </span>
+                      <span className="text-xs text-stone-500 font-medium">({client.businessName})</span>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                          isOverdue ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {isOverdue ? 'Expiring Today' : `Due ${client.completionDate}`}
+                      </span>
                     </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getLeadStageBadgeColor(lead.stage)}`}>
-                      {getLeadStageLabel(lead.stage)}
+                    <div className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                      Plan: ₹{Number(client.monthlyPlanAmount || 0).toLocaleString()} • Balance Due:{' '}
+                      <strong className="text-rose-600 font-mono">₹{remaining.toLocaleString()}</strong>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    {whatsappUrl && (
+                      <a
+                        href={whatsappUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center space-x-1 px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </a>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleSendCompletion(e, client)}
+                      disabled={completionSendingId === client.id}
+                      className="inline-flex items-center space-x-1 px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg disabled:opacity-50"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>{completionSendingId === client.id ? 'Sending...' : 'Email Notice'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/clients/${client.id}`)}
+                      className="text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 p-1"
+                    >
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 6. Recently Onboarded Clients */}
+      <div className="p-5 bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+            Recently Onboarded Clients
+          </h2>
+          <button
+            type="button"
+            onClick={() => navigate('/clients')}
+            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center"
+          >
+            All clients <ArrowRight className="w-3 h-3 ml-1" />
+          </button>
+        </div>
+
+        {recentClients.length === 0 ? (
+          <p className="text-xs text-stone-400 py-3 text-center">No clients added yet.</p>
+        ) : (
+          <div className="divide-y divide-stone-100 dark:divide-stone-800">
+            {recentClients.map((client) => {
+              const remaining = Number(client.remainingAmount || 0);
+              const isPaid = remaining <= 0;
+
+              return (
+                <div
+                  key={client.id}
+                  onClick={() => navigate(`/clients/${client.id}`)}
+                  className="py-3 flex items-center justify-between text-xs cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800/40 px-2 rounded-xl transition-colors"
+                >
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-semibold text-stone-900 dark:text-stone-100 text-sm">
+                        {client.name}
+                      </span>
+                      <span className="text-stone-400 font-medium">{client.businessName}</span>
+                    </div>
+                    <div className="text-[11px] text-stone-400 mt-0.5">
+                      Started: {client.startDate || '—'} &rarr; Completion: {client.completionDate || '—'}
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="font-mono font-bold text-stone-900 dark:text-stone-100">
+                      ₹{Number(client.monthlyPlanAmount || 0).toLocaleString()}
+                    </div>
+                    <span
+                      className={`text-[10px] font-semibold uppercase ${
+                        isPaid ? 'text-emerald-600' : 'text-rose-500'
+                      }`}
+                    >
+                      {isPaid ? 'Paid in Full' : `Remaining: ₹${remaining.toLocaleString()}`}
                     </span>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              );
+            })}
           </div>
-
-          {/* Today's Tasks */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <CheckSquare className="w-4 h-4 text-brand-600" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  Today's Pending Tasks ({lists.pendingTasksToday.length})
-                </h3>
-              </div>
-              <Link
-                to="/tasks"
-                className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline flex items-center"
-              >
-                Manage tasks <ArrowRight className="w-3 h-3 ml-1" />
-              </Link>
-            </div>
-
-            {lists.pendingTasksToday.length === 0 ? (
-              <p className="text-xs text-slate-400 py-3 text-center">
-                No tasks due today. Add daily deliverables to stay organized.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {lists.pendingTasksToday.map((task) => (
-                  <div
-                    key={task.id}
-                    onClick={() => navigate('/tasks')}
-                    className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-brand-500 bg-slate-50/60 dark:bg-slate-950/40 cursor-pointer flex items-center justify-between transition-colors"
-                  >
-                    <div className="flex items-center space-x-2.5">
-                      <div className="w-2 h-2 rounded-full bg-brand-500" />
-                      <div>
-                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{task.title}</div>
-                        <div className="text-xs text-slate-400">{task.category}</div>
-                      </div>
-                    </div>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">{task.priority}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Deadlines, Financials & Recent Activity */}
-        <div className="space-y-6">
-          {/* Upcoming Project Deliverables */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <FolderKanban className="w-4 h-4 text-brand-600" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  Upcoming Project Deadlines
-                </h3>
-              </div>
-              <Link
-                to="/projects"
-                className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline flex items-center"
-              >
-                All projects <ArrowRight className="w-3 h-3 ml-1" />
-              </Link>
-            </div>
-
-            {lists.upcomingDeadlines.length === 0 ? (
-              <p className="text-xs text-slate-400 py-3 text-center">
-                No active projects with upcoming deadlines.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {lists.upcomingDeadlines.map((proj) => (
-                  <div
-                    key={proj.id}
-                    onClick={() => navigate(`/projects/${proj.id}`)}
-                    className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-brand-500 bg-slate-50/60 dark:bg-slate-950/40 cursor-pointer flex items-center justify-between transition-colors"
-                  >
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{proj.name}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        Target: {formatDate(proj.deadline)}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        {formatCurrency(proj.agreedAmount)}
-                      </div>
-                      <span className="text-[10px] text-brand-600 capitalize">{proj.status}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Recent Interaction Activity Log */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <PhoneCall className="w-4 h-4 text-brand-600" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  Recent Interactions
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate('/leads')}
-                className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline"
-              >
-                Pipeline history
-              </button>
-            </div>
-
-            {lists.recentInteractions.length === 0 ? (
-              <p className="text-xs text-slate-400 py-3 text-center">
-                No interactions logged yet. Log calls or messages to track outreach.
-              </p>
-            ) : (
-              <div className="space-y-2.5">
-                {lists.recentInteractions.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex items-start space-x-3 text-xs"
-                  >
-                    <div className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 capitalize font-medium text-slate-700 dark:text-slate-300 flex-shrink-0">
-                      {item.type}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">
-                          {item.outcome}
-                        </span>
-                        <span className="text-[10px] text-slate-400 ml-2 flex-shrink-0">
-                          {formatRelativeDate(item.occurredAt)}
-                        </span>
-                      </div>
-                      <p className="text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
-                        {item.summary}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* Add Client Modal */}
+      <ClientFormModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSaved={(c) => navigate(`/clients/${c.id}`)}
+      />
     </div>
   );
 }

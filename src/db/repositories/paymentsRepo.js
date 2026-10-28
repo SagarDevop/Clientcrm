@@ -1,14 +1,17 @@
 import { db } from '../database.js';
 import { generateId } from '../../utils/id.js';
+import { roundMoney, calculatePaymentBalances } from '../../utils/finance.js';
 
 export const paymentsRepo = {
-  async getAll({ clientId, projectId, status } = {}, database = db) {
+  async getAll({ clientId, projectId, invoiceId, status } = {}, database = db) {
     let collection = database.payments.toCollection();
 
     if (clientId) {
       collection = database.payments.where('clientId').equals(clientId);
     } else if (projectId) {
       collection = database.payments.where('projectId').equals(projectId);
+    } else if (invoiceId) {
+      collection = database.payments.where('invoiceId').equals(invoiceId);
     } else if (status) {
       collection = database.payments.where('status').equals(status);
     }
@@ -20,7 +23,11 @@ export const paymentsRepo = {
       payments = payments.filter((p) => p.projectId === projectId);
     }
 
-    if (status && (clientId || projectId)) {
+    if (invoiceId && (clientId || projectId)) {
+      payments = payments.filter((p) => p.invoiceId === invoiceId);
+    }
+
+    if (status && (clientId || projectId || invoiceId)) {
       payments = payments.filter((p) => p.status === status);
     }
 
@@ -32,15 +39,80 @@ export const paymentsRepo = {
     return database.payments.get(id);
   },
 
-  async create(data, database = db) {
+  /**
+   * Detect potential duplicate payments (same client, amount, reference or date)
+   */
+  async findPotentialDuplicate({ clientId, amount, reference, paidAt, excludeId } = {}, database = db) {
+    if (!clientId || !amount) return null;
+
+    const payments = await database.payments.where('clientId').equals(clientId).toArray();
+    const targetAmount = roundMoney(Math.abs(Number(amount)));
+    const targetRef = (reference || '').trim().toLowerCase();
+    const targetDate = paidAt ? paidAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
+
+    return payments.find((p) => {
+      if (excludeId && p.id === excludeId) return false;
+      if (p.status === 'void' || p.status === 'cancelled') return false;
+
+      const pAmount = roundMoney(Math.abs(Number(p.amount)));
+      const pRef = (p.reference || '').trim().toLowerCase();
+      const pDate = p.paidAt ? p.paidAt.slice(0, 10) : '';
+
+      // Same reference and same client
+      if (targetRef && pRef && targetRef === pRef) {
+        return true;
+      }
+
+      // Same amount and exact same date
+      if (pAmount === targetAmount && pDate === targetDate) {
+        return true;
+      }
+
+      return false;
+    });
+  },
+
+  async create(data, optionsOrDb = {}, databaseArg = undefined) {
+    let allowDuplicate = false;
+    let database = db;
+
+    if (optionsOrDb && optionsOrDb.payments) {
+      database = optionsOrDb;
+    } else {
+      allowDuplicate = Boolean(optionsOrDb?.allowDuplicate);
+      database = databaseArg || db;
+    }
+
     const now = new Date().toISOString();
     const id = data.id || generateId();
-    const amount = Math.abs(Number(data.amount) || 0);
+
+    const rawAmount = Number(data.amount) || 0;
+    // For payments and refunds, amount is positive. For adjustments, preserve sign.
+    const amount =
+      data.type === 'adjustment'
+        ? roundMoney(rawAmount)
+        : roundMoney(Math.abs(rawAmount));
+
+    if (!allowDuplicate) {
+      const duplicate = await this.findPotentialDuplicate({
+        clientId: data.clientId,
+        amount,
+        reference: data.reference,
+        paidAt: data.paidAt,
+      }, database);
+
+      if (duplicate) {
+        throw new Error(
+          `Potential duplicate payment detected! A transaction for ${duplicate.amount} with reference "${duplicate.reference || 'N/A'}" was already recorded on ${duplicate.paidAt?.slice(0, 10)}.`
+        );
+      }
+    }
 
     const record = {
       id,
       clientId: data.clientId,
       projectId: data.projectId || null,
+      invoiceId: data.invoiceId || null,
       type: data.type || 'payment', // payment, refund, adjustment
       amount,
       paidAt: data.paidAt || now,
@@ -67,7 +139,11 @@ export const paymentsRepo = {
     };
 
     if (updates.amount !== undefined) {
-      cleanUpdates.amount = Math.abs(Number(updates.amount) || 0);
+      const raw = Number(updates.amount) || 0;
+      cleanUpdates.amount =
+        existing.type === 'adjustment' || updates.type === 'adjustment'
+          ? roundMoney(raw)
+          : roundMoney(Math.abs(raw));
     }
     if (updates.reference !== undefined) cleanUpdates.reference = updates.reference.trim();
 
@@ -80,7 +156,9 @@ export const paymentsRepo = {
     if (!existing) throw new Error(`Payment with id ${id} not found`);
 
     const now = new Date().toISOString();
-    const notes = existing.notes ? `${existing.notes}\n[VOIDED: ${reason || 'User voided'}]` : `[VOIDED: ${reason || 'User voided'}]`;
+    const notes = existing.notes
+      ? `${existing.notes}\n[VOIDED: ${reason || 'User voided'}]`
+      : `[VOIDED: ${reason || 'User voided'}]`;
 
     await database.payments.update(id, {
       status: 'void',
@@ -92,9 +170,9 @@ export const paymentsRepo = {
 
   /**
    * Calculates financial summary for client, project, or overall business
+   * Uses centralized financial calculation engine
    */
-  async getFinancialSummary({ clientId, projectId } = {}, database = db) {
-    // 1. Calculate agreed amount
+  async getFinancialSummary({ clientId, projectId, invoiceId } = {}, database = db) {
     let agreedAmount = 0;
     if (projectId) {
       const project = await database.projects.get(projectId);
@@ -107,51 +185,22 @@ export const paymentsRepo = {
       agreedAmount = allProjects.reduce((sum, p) => sum + (Number(p.agreedAmount) || 0), 0);
     }
 
-    // 2. Fetch payments
-    let payments = await this.getAll({ clientId, projectId }, database);
+    const payments = await this.getAll({ clientId, projectId, invoiceId }, database);
+    const balances = calculatePaymentBalances(payments);
 
-    let recordedCollected = 0;
-    let recordedRefunds = 0;
-    let recordedAdjustments = 0;
-    let pendingAmount = 0;
-    let voidedAmount = 0;
-
-    for (const p of payments) {
-      const amt = Number(p.amount) || 0;
-      if (p.status === 'void') {
-        voidedAmount += amt;
-        continue;
-      }
-      if (p.status === 'pending') {
-        pendingAmount += amt;
-        continue;
-      }
-
-      if (p.status === 'recorded') {
-        if (p.type === 'payment') {
-          recordedCollected += amt;
-        } else if (p.type === 'refund') {
-          recordedRefunds += amt;
-        } else if (p.type === 'adjustment') {
-          recordedAdjustments += amt;
-        }
-      }
-    }
-
-    const netReceived = recordedCollected - recordedRefunds + recordedAdjustments;
-    const outstanding = Math.max(0, agreedAmount - netReceived);
-    const overpaid = Math.max(0, netReceived - agreedAmount);
+    const outstanding = Math.max(0, roundMoney(agreedAmount - balances.netClearedCash));
+    const overpaid = Math.max(0, roundMoney(balances.netClearedCash - agreedAmount));
 
     return {
-      agreedAmount,
-      recordedCollected,
-      recordedRefunds,
-      recordedAdjustments,
-      netReceived,
+      agreedAmount: roundMoney(agreedAmount),
+      recordedCollected: balances.clearedPayments,
+      recordedRefunds: balances.clearedRefunds,
+      recordedAdjustments: balances.clearedAdjustments,
+      netReceived: balances.netClearedCash,
       outstanding,
       overpaid,
-      pendingAmount,
-      voidedAmount,
+      pendingAmount: balances.pendingAmount,
+      voidedAmount: balances.voidedAmount,
       transactionCount: payments.length,
     };
   },

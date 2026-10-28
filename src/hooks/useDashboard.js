@@ -5,7 +5,18 @@ import { isToday, isPast, parseISO, startOfDay, endOfDay, startOfMonth } from 'd
 export function useDashboard() {
   const data = useLiveQuery(
     async () => {
-      const [clients, leads, tasks, projects, payments, interactions, reminders] = await Promise.all([
+      const [
+        clients,
+        leads,
+        tasks,
+        projects,
+        payments,
+        interactions,
+        reminders,
+        invoices,
+        subscriptions,
+        contentItems,
+      ] = await Promise.all([
         db.clients.toArray(),
         db.leads.toArray(),
         db.tasks.toArray(),
@@ -13,15 +24,59 @@ export function useDashboard() {
         db.payments.toArray(),
         db.interactions.orderBy('occurredAt').reverse().limit(10).toArray(),
         db.reminders.where('status').equals('scheduled').toArray(),
+        db.invoices ? db.invoices.toArray() : [],
+        db.subscriptions ? db.subscriptions.toArray() : [],
+        db.content_items ? db.content_items.toArray() : [],
       ]);
 
       const now = new Date();
       const todayStart = startOfDay(now);
       const todayEnd = endOfDay(now);
       const monthStart = startOfMonth(now);
+      const todayISO = now.toISOString().slice(0, 10);
+      const sevenDaysLater = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
       // Clients
       const activeClients = clients.filter((c) => c.status === 'active');
+
+      // MRR & Subscriptions
+      const activeSubscriptions = subscriptions.filter((s) => s.status === 'active');
+      const mrr = activeSubscriptions.reduce((sum, s) => {
+        const amt = Number(s.monthlyAmount) || 0;
+        if (s.billingFrequency === 'quarterly') return sum + amt / 3;
+        if (s.billingFrequency === 'yearly') return sum + amt / 12;
+        return sum + amt;
+      }, 0);
+
+      const renewalsDueSoon = subscriptions.filter(
+        (s) =>
+          s.status === 'active' &&
+          ((s.nextInvoiceDate && s.nextInvoiceDate >= todayISO && s.nextInvoiceDate <= sevenDaysLater) ||
+            (s.renewalDate && s.renewalDate >= todayISO && s.renewalDate <= sevenDaysLater))
+      );
+
+      // Content Deliverables
+      const contentDeliverablesToday = contentItems.filter(
+        (c) => c.scheduledDate && c.scheduledDate.slice(0, 10) === todayISO && c.stage !== 'published'
+      );
+      const contentDeliverablesThisWeek = contentItems.filter(
+        (c) =>
+          c.scheduledDate &&
+          c.scheduledDate.slice(0, 10) >= todayISO &&
+          c.scheduledDate.slice(0, 10) <= sevenDaysLater &&
+          c.stage !== 'published'
+      );
+
+      // Invoices
+      const overdueInvoices = invoices.filter((i) => i.status === 'overdue');
+      const overdueInvoicesAmount = overdueInvoices.reduce(
+        (sum, i) => sum + Math.max(0, (Number(i.total) || 0) - (Number(i.paidAmount) || 0)),
+        0
+      );
+
+      const outstandingReceivables = invoices
+        .filter((i) => i.status !== 'void' && i.status !== 'paid' && i.status !== 'draft')
+        .reduce((sum, i) => sum + Math.max(0, (Number(i.total) || 0) - (Number(i.paidAmount) || 0)), 0);
 
       // Leads
       const openLeads = leads.filter((l) => l.stage !== 'won' && l.stage !== 'lost');
@@ -96,7 +151,7 @@ export function useDashboard() {
       }
 
       const netCollected = totalCollected - totalRefunds + totalAdjustments;
-      const outstandingPayments = Math.max(0, totalAgreed - netCollected);
+      const outstandingPayments = outstandingReceivables > 0 ? outstandingReceivables : Math.max(0, totalAgreed - netCollected);
 
       // Conversion Rate calculation
       const totalDecidedLeads = wonLeads.length + lostLeads.length;
@@ -111,6 +166,14 @@ export function useDashboard() {
         counts: {
           activeClients: activeClients.length,
           openLeads: openLeads.length,
+          mrr,
+          monthCollected,
+          outstandingPayments,
+          overdueInvoicesCount: overdueInvoices.length,
+          overdueInvoicesAmount,
+          renewalsDueSoonCount: renewalsDueSoon.length,
+          contentTodayCount: contentDeliverablesToday.length,
+          contentWeekCount: contentDeliverablesThisWeek.length,
           followUpsToday: todayFollowUps.length,
           overdueFollowUps: overdueFollowUps.length,
           pendingTasksToday: pendingTasksToday.length,
@@ -119,8 +182,6 @@ export function useDashboard() {
           pendingDeliverables: pendingDeliverables.length,
           totalAgreed,
           netCollected,
-          monthCollected,
-          outstandingPayments,
           conversionRateDecided,
           conversionRateTotal,
           wonLeadsCount: wonLeads.length,
@@ -133,6 +194,10 @@ export function useDashboard() {
           overdueTasks,
           completedTasksToday,
           upcomingDeadlines,
+          renewalsDueSoon,
+          contentDeliverablesToday,
+          contentDeliverablesThisWeek,
+          overdueInvoices,
           recentInteractions: interactions,
         },
       };

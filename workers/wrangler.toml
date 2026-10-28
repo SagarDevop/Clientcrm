@@ -1,0 +1,14 @@
+# BizCRM Cloudflare Worker Configuration
+name = "bizcrm-email-worker"
+main = "email-reminder-worker.js"
+compatibility_date = "2024-11-01"
+
+# Scheduled Daily Cron Trigger (Runs at 03:00 UTC = 08:30 AM IST)
+[triggers]
+crons = ["0 3 * * *"]
+
+[vars]
+DEFAULT_TIMEZONE = "Asia/Kolkata"
+SENDER_NAME = "Jugarr Agency"
+SENDER_EMAIL = "warshasingh21@gmail.com"
+OWNER_EMAIL = "warshasingh21@gmail.com"

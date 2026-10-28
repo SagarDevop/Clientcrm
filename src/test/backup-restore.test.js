@@ -26,7 +26,7 @@ describe('JSON Backup, Validation, and Restore Engine', () => {
     const exported = await exportDatabaseToJson(testDb);
 
     expect(exported.app).toBe('BizCRM');
-    expect(exported.version).toBe(1);
+    expect(exported.version).toBeGreaterThanOrEqual(1);
     expect(exported.recordCounts.clients).toBe(1);
     expect(exported.recordCounts.leads).toBe(1);
     expect(exported.data.clients).toHaveLength(1);

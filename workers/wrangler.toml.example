@@ -1,0 +1,20 @@
+# BizCRM Cloudflare Worker Configuration
+# Deploy for FREE using: npx wrangler deploy
+
+name = "bizcrm-email-worker"
+main = "email-reminder-worker.js"
+compatibility_date = "2024-11-01"
+
+# Scheduled Daily Cron Trigger (Runs at 03:00 UTC = 08:30 AM IST)
+[triggers]
+crons = ["0 3 * * *"]
+
+[vars]
+DEFAULT_TIMEZONE = "Asia/Kolkata"
+SENDER_NAME = "BizCRM Agency"
+SENDER_EMAIL = "notifications@youragency.com"
+OWNER_EMAIL = "owner@youragency.com"
+
+# Sensitive secrets (set these using: npx wrangler secret put <NAME>)
+# - BREVO_API_KEY: Transactional API key from https://app.brevo.com/settings/keys/api
+# - RESEND_API_KEY: Optional alternative from https://resend.com/api-keys

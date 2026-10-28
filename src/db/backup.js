@@ -1,13 +1,30 @@
 import { db, ensureDbSeeded } from './database.js';
 
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 export const APP_IDENTIFIER = 'BizCRM';
 
 /**
  * Export all database tables into a versioned JSON object
  */
 export async function exportDatabaseToJson(database = db) {
-  const [clients, leads, interactions, projects, tasks, payments, services, reminders, settings] = await Promise.all([
+  const [
+    clients,
+    leads,
+    interactions,
+    projects,
+    tasks,
+    payments,
+    services,
+    reminders,
+    settings,
+    invoices,
+    subscriptions,
+    milestones,
+    content_items,
+    campaigns,
+    expenses,
+    email_jobs,
+  ] = await Promise.all([
     database.clients.toArray(),
     database.leads.toArray(),
     database.interactions.toArray(),
@@ -17,6 +34,13 @@ export async function exportDatabaseToJson(database = db) {
     database.services.toArray(),
     database.reminders.toArray(),
     database.settings.toArray(),
+    database.invoices ? database.invoices.toArray() : [],
+    database.subscriptions ? database.subscriptions.toArray() : [],
+    database.milestones ? database.milestones.toArray() : [],
+    database.content_items ? database.content_items.toArray() : [],
+    database.campaigns ? database.campaigns.toArray() : [],
+    database.expenses ? database.expenses.toArray() : [],
+    database.email_jobs ? database.email_jobs.toArray() : [],
   ]);
 
   const backupObject = {
@@ -33,6 +57,13 @@ export async function exportDatabaseToJson(database = db) {
       services: services.length,
       reminders: reminders.length,
       settings: settings.length,
+      invoices: invoices.length,
+      subscriptions: subscriptions.length,
+      milestones: milestones.length,
+      content_items: content_items.length,
+      campaigns: campaigns.length,
+      expenses: expenses.length,
+      email_jobs: email_jobs.length,
     },
     data: {
       clients,
@@ -44,6 +75,13 @@ export async function exportDatabaseToJson(database = db) {
       services,
       reminders,
       settings,
+      invoices,
+      subscriptions,
+      milestones,
+      content_items,
+      campaigns,
+      expenses,
+      email_jobs,
     },
   };
 
@@ -180,21 +218,20 @@ export async function restoreBackup(parsedBackup, strategy = 'replace', database
     database.services,
     database.reminders,
     database.settings,
-  ];
+    database.invoices,
+    database.subscriptions,
+    database.milestones,
+    database.content_items,
+    database.campaigns,
+    database.expenses,
+    database.email_jobs,
+  ].filter(Boolean);
 
   return database.transaction('rw', tables, async () => {
     if (strategy === 'replace') {
       // Clear all tables
-      await Promise.all([
-        database.clients.clear(),
-        database.leads.clear(),
-        database.interactions.clear(),
-        database.projects.clear(),
-        database.tasks.clear(),
-        database.payments.clear(),
-        database.services.clear(),
-        database.reminders.clear(),
-      ]);
+      const clearPromises = tables.map((t) => t.clear());
+      await Promise.all(clearPromises);
     }
 
     // Insert records
@@ -206,6 +243,15 @@ export async function restoreBackup(parsedBackup, strategy = 'replace', database
     if (data.payments?.length) await database.payments.bulkPut(data.payments);
     if (data.services?.length) await database.services.bulkPut(data.services);
     if (data.reminders?.length) await database.reminders.bulkPut(data.reminders);
+
+    // v2 tables
+    if (data.invoices?.length && database.invoices) await database.invoices.bulkPut(data.invoices);
+    if (data.subscriptions?.length && database.subscriptions) await database.subscriptions.bulkPut(data.subscriptions);
+    if (data.milestones?.length && database.milestones) await database.milestones.bulkPut(data.milestones);
+    if (data.content_items?.length && database.content_items) await database.content_items.bulkPut(data.content_items);
+    if (data.campaigns?.length && database.campaigns) await database.campaigns.bulkPut(data.campaigns);
+    if (data.expenses?.length && database.expenses) await database.expenses.bulkPut(data.expenses);
+    if (data.email_jobs?.length && database.email_jobs) await database.email_jobs.bulkPut(data.email_jobs);
 
     if (strategy === 'replace' && data.settings?.length) {
       await database.settings.clear();
@@ -222,6 +268,12 @@ export async function restoreBackup(parsedBackup, strategy = 'replace', database
         tasks: data.tasks?.length || 0,
         payments: data.payments?.length || 0,
         services: data.services?.length || 0,
+        invoices: data.invoices?.length || 0,
+        subscriptions: data.subscriptions?.length || 0,
+        milestones: data.milestones?.length || 0,
+        content_items: data.content_items?.length || 0,
+        campaigns: data.campaigns?.length || 0,
+        expenses: data.expenses?.length || 0,
       },
     };
   });
@@ -231,31 +283,28 @@ export async function restoreBackup(parsedBackup, strategy = 'replace', database
  * Wipe all local data with safety check
  */
 export async function resetAllData(database = db) {
-  await database.transaction(
-    'rw',
-    [
-      database.clients,
-      database.leads,
-      database.interactions,
-      database.projects,
-      database.tasks,
-      database.payments,
-      database.reminders,
-      database.services,
-      database.settings,
-    ],
-    async () => {
-      await database.clients.clear();
-      await database.leads.clear();
-      await database.interactions.clear();
-      await database.projects.clear();
-      await database.tasks.clear();
-      await database.payments.clear();
-      await database.reminders.clear();
-      await database.services.clear();
-      await database.settings.clear();
-    }
-  );
+  const tables = [
+    database.clients,
+    database.leads,
+    database.interactions,
+    database.projects,
+    database.tasks,
+    database.payments,
+    database.reminders,
+    database.services,
+    database.settings,
+    database.invoices,
+    database.subscriptions,
+    database.milestones,
+    database.content_items,
+    database.campaigns,
+    database.expenses,
+    database.email_jobs,
+  ].filter(Boolean);
+
+  await database.transaction('rw', tables, async () => {
+    await Promise.all(tables.map((t) => t.clear()));
+  });
 
   await ensureDbSeeded(database);
   return true;

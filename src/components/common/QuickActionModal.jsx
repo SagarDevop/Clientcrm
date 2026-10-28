@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal } from './Modal.jsx';
-import { UserPlus, Users, CheckSquare, PhoneCall, DollarSign } from 'lucide-react';
+import { UserPlus, Users, CheckSquare, PhoneCall, DollarSign, FileText, Film } from 'lucide-react';
 
 export function QuickActionModal({
   isOpen,
@@ -10,13 +10,15 @@ export function QuickActionModal({
   onOpenAddTask,
   onOpenLogInteraction,
   onOpenRecordPayment,
+  onOpenCreateInvoice,
+  onOpenAddContent,
 }) {
   const actions = [
     {
       title: 'New Lead',
       description: 'Capture prospect info, quotation & services',
       icon: UserPlus,
-      color: 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300',
+      color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
       onClick: () => {
         onClose();
         onOpenAddLead();
@@ -26,40 +28,60 @@ export function QuickActionModal({
       title: 'New Client',
       description: 'Add active client record & services',
       icon: Users,
-      color: 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300',
+      color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
       onClick: () => {
         onClose();
         onOpenAddClient();
       },
     },
     {
-      title: 'Log Interaction',
-      description: 'Record call, WhatsApp, meeting, or demo outcome',
-      icon: PhoneCall,
-      color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+      title: 'Create Invoice',
+      description: 'Generate decimal-accurate client bill',
+      icon: FileText,
+      color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
       onClick: () => {
         onClose();
-        onOpenLogInteraction();
+        if (onOpenCreateInvoice) onOpenCreateInvoice();
       },
     },
     {
-      title: 'Add Task / Follow-up',
-      description: 'Schedule daily deliverable or contact reminder',
-      icon: CheckSquare,
-      color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+      title: 'New Content Deliverable',
+      description: 'Add reel, story, post, or script',
+      icon: Film,
+      color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
       onClick: () => {
         onClose();
-        onOpenAddTask();
+        if (onOpenAddContent) onOpenAddContent();
       },
     },
     {
       title: 'Record Payment',
       description: 'Add client deposit, payment, or adjustment',
       icon: DollarSign,
-      color: 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300',
+      color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
       onClick: () => {
         onClose();
         onOpenRecordPayment();
+      },
+    },
+    {
+      title: 'Add Task / Follow-up',
+      description: 'Schedule daily deliverable or contact reminder',
+      icon: CheckSquare,
+      color: 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300',
+      onClick: () => {
+        onClose();
+        onOpenAddTask();
+      },
+    },
+    {
+      title: 'Log Interaction',
+      description: 'Record call, WhatsApp, meeting, or demo outcome',
+      icon: PhoneCall,
+      color: 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300',
+      onClick: () => {
+        onClose();
+        onOpenLogInteraction();
       },
     },
   ];

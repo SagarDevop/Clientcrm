@@ -12,6 +12,7 @@ export function useClients(filters = {}) {
     clients: clients || [],
     isLoading: clients === undefined,
     createClient: (data) => clientsRepo.create(data),
+    createWithPlan: (data) => clientsRepo.createWithPlan(data),
     updateClient: (id, updates) => clientsRepo.update(id, updates),
     archiveClient: (id) => clientsRepo.archive(id),
     restoreClient: (id) => clientsRepo.restore(id),
@@ -27,7 +28,10 @@ export function useClient(id) {
     client,
     isLoading: client === undefined,
     updateClient: (updates) => clientsRepo.update(id, updates),
+    recordPayment: (paymentData) => clientsRepo.recordPayment(id, paymentData),
+    startNextMonth: (nextMonthData) => clientsRepo.startNextMonth(id, nextMonthData),
     archiveClient: () => clientsRepo.archive(id),
     restoreClient: () => clientsRepo.restore(id),
   };
 }
+

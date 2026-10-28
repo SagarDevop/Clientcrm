@@ -1,7 +1,7 @@
 /**
  * Schema migrations manager and version tracking
  */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export async function checkAndApplyMigrations(database) {
   // In Dexie, declared version upgrades in database.js apply automatically when opening.

@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:worker": "wrangler deploy --config workers/wrangler.toml",
+    "secret:brevo": "wrangler secret put BREVO_API_KEY --config workers/wrangler.toml"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
