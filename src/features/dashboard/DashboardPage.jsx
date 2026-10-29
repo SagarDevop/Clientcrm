@@ -4,8 +4,7 @@ import { useClients } from '../../hooks/useClients.js';
 import { ClientFormModal } from '../../components/forms/ClientFormModal.jsx';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner.jsx';
 import { WhatsAppModal } from '../../components/common/WhatsAppModal.jsx';
-import { generateWhatsAppLink, WHATSAPP_TEMPLATES } from '../../utils/whatsapp.js';
-import { sendClientCompletionEmails } from '../../utils/email.js';
+import { sendClientCompletionEmails, sendWebDevDeliveryEmails } from '../../utils/email.js';
 import {
   Users,
   DollarSign,
@@ -36,34 +35,49 @@ export function DashboardPage() {
   const activeClients = clients.filter((c) => c.status === 'active');
 
   // Metrics
-  const totalMonthlyContracted = activeClients.reduce(
-    (sum, c) => sum + (Number(c.monthlyPlanAmount) || 0),
+  const totalContracted = activeClients.reduce(
+    (sum, c) =>
+      sum +
+      (Number(
+        c.clientType === 'web_development' || c.category === 'web_dev'
+          ? c.totalProjectCost || c.agreedAmount || 0
+          : c.monthlyPlanAmount || 0
+      ) || 0),
     0
   );
 
   const totalPaymentsReceived = activeClients.reduce(
-    (sum, c) => sum + (Number(c.totalPaid) || (Number(c.tokenPaid) || 0) + (Number(c.additionalPaid) || 0)),
+    (sum, c) =>
+      sum +
+      (Number(c.totalPaid) ||
+        (Number(c.tokenPaid || c.advancePaid) || 0) + (Number(c.additionalPaid) || 0)),
     0
   );
 
-  const totalRemainingDue = activeClients.reduce(
-    (sum, c) =>
+  const totalRemainingDue = activeClients.reduce((sum, c) => {
+    const cost = Number(
+      c.clientType === 'web_development' || c.category === 'web_dev'
+        ? c.totalProjectCost || c.agreedAmount || 0
+        : c.monthlyPlanAmount || 0
+    );
+    const paid = Number(
+      c.totalPaid ||
+        (Number(c.tokenPaid || c.advancePaid) || 0) + (Number(c.additionalPaid) || 0)
+    );
+    return (
       sum +
       Math.max(
         0,
-        Number(
-          c.remainingAmount !== undefined
-            ? c.remainingAmount
-            : (Number(c.monthlyPlanAmount) || 0) - (Number(c.totalPaid) || 0)
-        )
-      ),
-    0
-  );
+        Number(c.remainingAmount !== undefined ? c.remainingAmount : cost - paid)
+      )
+    );
+  }, 0);
 
   // Expiring Soon (Within 7 days or overdue)
   const expiringClients = activeClients.filter((c) => {
-    if (!c.completionDate) return false;
-    return c.completionDate <= sevenDaysLaterStr;
+    const deadline = c.deliveryDate || c.completionDate;
+    if (!deadline) return false;
+    return deadline <= sevenDaysLaterStr;
   });
 
   // Recently Onboarded (last 5)
@@ -76,11 +90,21 @@ export function DashboardPage() {
     try {
       setCompletionSendingId(client.id);
       setCompletionFeedback(null);
-      const res = await sendClientCompletionEmails({ client, forceRetry: true });
-      if (res.clientSent) {
-        setCompletionFeedback({ type: 'success', text: `Completion notice sent to ${client.email}` });
+      const isWeb = client.clientType === 'web_development' || client.category === 'web_dev';
+      if (isWeb) {
+        const res = await sendWebDevDeliveryEmails({ client, project: { name: client.projectName } });
+        if (res.clientSent) {
+          setCompletionFeedback({ type: 'success', text: `Delivery notice sent to ${client.email}` });
+        } else {
+          setCompletionFeedback({ type: 'error', text: res.errors?.join('; ') || 'Failed to dispatch email' });
+        }
       } else {
-        setCompletionFeedback({ type: 'error', text: res.errors?.join('; ') || 'Failed to dispatch email' });
+        const res = await sendClientCompletionEmails({ client, forceRetry: true });
+        if (res.clientSent) {
+          setCompletionFeedback({ type: 'success', text: `Completion notice sent to ${client.email}` });
+        } else {
+          setCompletionFeedback({ type: 'error', text: res.errors?.join('; ') || 'Failed to dispatch email' });
+        }
       }
     } catch (err) {
       setCompletionFeedback({ type: 'error', text: err.message });
@@ -156,15 +180,15 @@ export function DashboardPage() {
           className="p-4 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-emerald-500 cursor-pointer transition-colors shadow-xs"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Monthly Contracted</span>
+            <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Total Contracted</span>
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
-            ₹{totalMonthlyContracted.toLocaleString()}
+            ₹{totalContracted.toLocaleString()}
           </div>
-          <div className="text-[11px] text-stone-400 mt-1">Sum of active plans</div>
+          <div className="text-[11px] text-stone-400 mt-1">Active plans & web projects</div>
         </div>
 
         {/* 3. Payments Received */}
@@ -319,7 +343,13 @@ export function DashboardPage() {
         ) : (
           <div className="divide-y divide-stone-100 dark:divide-stone-800">
             {recentClients.map((client) => {
-              const remaining = Number(client.remainingAmount || 0);
+              const isWeb = client.clientType === 'web_development' || client.category === 'web_dev';
+              const cost = Number(isWeb ? (client.totalProjectCost || client.agreedAmount || 0) : (client.monthlyPlanAmount || 0));
+              const remaining = Number(
+                client.remainingAmount !== undefined
+                  ? client.remainingAmount
+                  : Math.max(0, cost - (Number(client.totalPaid) || 0))
+              );
               const isPaid = remaining <= 0;
 
               return (
@@ -333,16 +363,29 @@ export function DashboardPage() {
                       <span className="font-semibold text-stone-900 dark:text-stone-100 text-sm">
                         {client.name}
                       </span>
-                      <span className="text-stone-400 font-medium">{client.businessName}</span>
+                      <span className="text-stone-400 font-medium">({client.businessName})</span>
+                      {isWeb && (
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+                          Web Dev
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] text-stone-400 mt-0.5">
-                      Started: {client.startDate || '—'} &rarr; Completion: {client.completionDate || '—'}
+                      {isWeb ? (
+                        <>
+                          {client.projectName || 'Project'} • Kickoff: {client.startDate || '—'} &rarr; Delivery: {client.deliveryDate || client.completionDate || '—'}
+                        </>
+                      ) : (
+                        <>
+                          Started: {client.startDate || '—'} &rarr; Completion: {client.completionDate || '—'}
+                        </>
+                      )}
                     </div>
                   </div>
 
                   <div className="text-right">
                     <div className="font-mono font-bold text-stone-900 dark:text-stone-100">
-                      ₹{Number(client.monthlyPlanAmount || 0).toLocaleString()}
+                      ₹{cost.toLocaleString()}
                     </div>
                     <span
                       className={`text-[10px] font-semibold uppercase ${

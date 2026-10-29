@@ -1,4 +1,3 @@
-import { normalizePhone } from './id.js';
 import { buildUpiLink, getSavedUpiId, getSavedUpiName } from './upi.js';
 
 /**
@@ -58,16 +57,28 @@ export const WHATSAPP_TEMPLATES = {
 
   projectMilestone: ({ clientName, projectName, milestoneTitle, amount, currency = '₹' }) =>
     `Hello ${clientName || 'there'},\n\nGreat news! Milestone *${milestoneTitle}* for *${projectName}* is now ready for review.${amount ? ` Milestone amount: *${currency}${amount}*.` : ''}\n\nThank you for working with us!`,
+
+  webDevQuotation: ({ clientName, businessName, projectName, quotationNumber, totalCost, advancePaid, remainingBalance, deliveryDate, upiLink, upiId, currency = '₹' }) => {
+    let msg = `Hello ${clientName || 'there'}! 🚀\n\nHere is your official Web Development project quotation for *${businessName || 'your business'}*.\n\n📋 *Project & Quotation Summary:*\n• Project: *${projectName || 'Web Development'}*\n• Quotation #: *${quotationNumber || 'QT-WEB'}*\n• Total Project Cost: *${currency}${Number(totalCost || 0).toLocaleString()}*\n• Advance Received: *${currency}${Number(advancePaid || 0).toLocaleString()}*\n• Remaining Due: *${currency}${Number(remainingBalance || 0).toLocaleString()}*\n• Expected Delivery: *${deliveryDate || 'Scheduled'}*`;
+    if (remainingBalance > 0 && upiLink && upiId) {
+      msg += `\n\n📲 *Pay via UPI:*\nUPI ID: *${upiId}*\n${upiLink}`;
+    }
+    msg += `\n\nPlease let us know if you have any questions or when you are ready to proceed!\n\nBest regards,\n*Jugarr Agency*`;
+    return msg;
+  },
 };
 
 export function getClientWhatsAppMessage(templateKey, client) {
   if (!client) return '';
-  const planAmount = Number(client.monthlyPlanAmount || 0);
-  const tokenPaid = Number(client.tokenPaid || 0);
+  const isWebDev = client.clientType === 'web_development' || client.category === 'web_dev';
+  const planAmount = Number(isWebDev ? (client.totalProjectCost || client.agreedAmount || 0) : (client.monthlyPlanAmount || 0));
+  const tokenPaid = Number(client.tokenPaid || client.advancePaid || 0);
   const additionalPaid = Number(client.additionalPaid || 0);
   const totalPaid = Number(client.totalPaid || tokenPaid + additionalPaid);
   const remainingAmount = Number(client.remainingAmount !== undefined ? client.remainingAmount : Math.max(0, planAmount - totalPaid));
-  const packageName = client.packageDescription?.slice(0, 50) || 'Monthly Service Package';
+  const packageName = isWebDev
+    ? client.projectName || 'Web Development Project'
+    : client.packageDescription?.slice(0, 50) || 'Monthly Service Package';
 
   const upiId = getSavedUpiId();
   const upiName = getSavedUpiName();
@@ -75,15 +86,21 @@ export function getClientWhatsAppMessage(templateKey, client) {
     upiId,
     payeeName: upiName,
     amount: remainingAmount,
-    transactionNote: `Plan - ${client.name}`,
+    transactionNote: `Payment - ${client.name}`,
   });
 
   const data = {
     clientName: client.name,
     businessName: client.businessName,
     packageName,
+    projectName: client.projectName || packageName,
+    quotationNumber: client.quotationNumber || 'QT-WEB',
+    totalCost: planAmount,
+    advancePaid: tokenPaid,
+    remainingBalance: remainingAmount,
     startDate: client.startDate,
-    completionDate: client.completionDate,
+    deliveryDate: client.deliveryDate || client.completionDate,
+    completionDate: client.completionDate || client.deliveryDate,
     planAmount,
     tokenPaid,
     remainingAmount,
@@ -91,6 +108,16 @@ export function getClientWhatsAppMessage(templateKey, client) {
     upiLink,
     currency: '₹',
   };
+
+  if (isWebDev) {
+    if (templateKey === 'quotation' || templateKey === 'onboarding') {
+      return WHATSAPP_TEMPLATES.webDevQuotation(data);
+    }
+    if (templateKey === 'balance') {
+      return WHATSAPP_TEMPLATES.balanceDue(data);
+    }
+    return WHATSAPP_TEMPLATES.webDevQuotation(data);
+  }
 
   switch (templateKey) {
     case 'onboarding':

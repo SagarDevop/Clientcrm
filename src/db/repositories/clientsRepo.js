@@ -3,6 +3,7 @@ import { generateId, normalizePhone } from '../../utils/id.js';
 import { roundMoney } from '../../utils/finance.js';
 import { getNextBillingDateISO } from '../../utils/dates.js';
 import { paymentsRepo } from './paymentsRepo.js';
+import { quotationsRepo, calculateQuotationTotals, generateQuotationNumber } from './quotationsRepo.js';
 
 export const clientsRepo = {
   async getAll({ status, serviceId, search } = {}, database = db) {
@@ -444,6 +445,445 @@ export const clientsRepo = {
         { allowDuplicate: true },
         database
       );
+    }
+
+    return database.clients.get(clientId);
+  },
+
+  /**
+   * Create dedicated Web Development project-based client
+   */
+  async createWebDevClient(data, database = db) {
+    const now = new Date().toISOString();
+    const id = data.id || generateId();
+    const projectId = data.projectId || generateId();
+    const quotationId = data.quotationId || generateId();
+
+    const name = (data.name || '').trim();
+    const businessName = (data.businessName || '').trim();
+    const email = (data.email || '').trim().toLowerCase();
+    const phone = (data.phone || '').trim();
+    const whatsapp = (data.whatsapp || phone).trim();
+    const projectName = (data.projectName || `${businessName || name} Website`).trim();
+    const projectDescription = (data.projectDescription || '').trim();
+
+    if (!name) throw new Error('Client name is required');
+    if (!businessName) throw new Error('Business name is required');
+    if (!email) throw new Error('Email address is required');
+    if (!phone) throw new Error('Phone number is required');
+    if (!projectName) throw new Error('Project name is required');
+
+    // Quotation items & calculations
+    const items = Array.isArray(data.items) && data.items.length > 0 ? data.items : [
+      {
+        id: 'item_1',
+        name: 'Full-Stack Responsive Website Development',
+        description: 'Complete custom UI/UX design, mobile responsiveness, and deployment',
+        quantity: 1,
+        unitPrice: roundMoney(Number(data.totalProjectCost || data.agreedAmount) || 25000),
+        total: roundMoney(Number(data.totalProjectCost || data.agreedAmount) || 25000),
+      },
+    ];
+
+    const quotationTotals = calculateQuotationTotals(items, {
+      type: data.discountType || 'none',
+      value: data.discountValue || 0,
+    });
+
+    const totalProjectCost = roundMoney(
+      data.totalProjectCost !== undefined ? Number(data.totalProjectCost) : quotationTotals.totalAmount
+    );
+
+    if (totalProjectCost <= 0) {
+      throw new Error('Total project cost must be greater than zero');
+    }
+
+    const tokenPaid = roundMoney(Number(data.tokenPaid || data.advanceReceived) || 0);
+    if (tokenPaid < 0) {
+      throw new Error('Advance/token payment cannot be negative');
+    }
+    if (tokenPaid > totalProjectCost) {
+      throw new Error('Advance/token payment cannot exceed total project cost');
+    }
+
+    const remainingAmount = roundMoney(Math.max(0, totalProjectCost - tokenPaid));
+    const paymentStatus = remainingAmount === 0 ? 'paid' : tokenPaid > 0 ? 'partially_paid' : 'unpaid';
+
+    const startDate = data.startDate || now.slice(0, 10);
+    const deliveryDate = data.deliveryDate || data.completionDate || data.deadline || now.slice(0, 10);
+
+    const quotationNumber = data.quotationNumber || generateQuotationNumber('QT-WEB');
+    const paymentTerms = (data.paymentTerms || '50% advance to initiate work, 50% on project delivery').trim();
+
+    // Default deliverables
+    const defaultDeliverables = [
+      { id: 'del_1', title: 'Scope & Architecture Specification', status: 'completed', completedAt: now },
+      { id: 'del_2', title: 'UI/UX Wireframes & Responsive Figma Mockups', status: 'in_progress', completedAt: null },
+      { id: 'del_3', title: 'Frontend UI Development & Component Assembly', status: 'pending', completedAt: null },
+      { id: 'del_4', title: 'Backend APIs, Database & CMS Integration', status: 'pending', completedAt: null },
+      { id: 'del_5', title: 'Cross-device Testing, Speed & SEO Optimization', status: 'pending', completedAt: null },
+      { id: 'del_6', title: 'Domain, SSL Configuration & Production Deployment', status: 'pending', completedAt: null },
+    ];
+    const deliverables = Array.isArray(data.deliverables) && data.deliverables.length > 0 ? data.deliverables : defaultDeliverables;
+
+    // Documents
+    const documents = Array.isArray(data.documents) ? data.documents : [];
+
+    // 1. Create Quotation in quotations repo
+    const quotationRecord = {
+      id: quotationId,
+      quotationNumber,
+      clientId: id,
+      projectId,
+      clientName: name,
+      businessName,
+      clientEmail: email,
+      clientPhone: phone,
+      projectName,
+      projectDescription,
+      items: quotationTotals.items,
+      subtotal: quotationTotals.subtotal,
+      discountType: quotationTotals.discountType,
+      discountValue: quotationTotals.discountValue,
+      discountAmount: quotationTotals.discountAmount,
+      totalAmount: totalProjectCost,
+      advanceReceived: tokenPaid,
+      remainingBalance: remainingAmount,
+      paymentTerms,
+      startDate,
+      deliveryDate,
+      status: 'accepted',
+      notes: data.notes || '',
+      createdAt: data.createdAt || now,
+      updatedAt: now,
+    };
+    if (database.quotations) {
+      await database.quotations.add(quotationRecord);
+    }
+
+    // 2. Create Project in projects repo
+    const projectRecord = {
+      id: projectId,
+      clientId: id,
+      name: projectName,
+      description: projectDescription,
+      serviceIds: Array.isArray(data.serviceIds) && data.serviceIds.length > 0 ? data.serviceIds : ['srv-website', 'srv-web-app'],
+      status: data.deliveryStatus || 'planning',
+      startDate,
+      deadline: deliveryDate,
+      agreedAmount: totalProjectCost,
+      advancePaid: tokenPaid,
+      additionalPaid: 0,
+      totalPaid: tokenPaid,
+      remainingBalance: remainingAmount,
+      paymentStatus,
+      quotationId,
+      quotationNumber,
+      paymentTerms,
+      deliverables,
+      documents,
+      notes: data.notes || '',
+      createdAt: data.createdAt || now,
+      updatedAt: now,
+      completedAt: data.deliveryStatus === 'completed' ? now : null,
+    };
+    if (database.projects) {
+      await database.projects.add(projectRecord);
+    }
+
+    // 3. Create Client in clients table
+    const clientRecord = {
+      id,
+      clientType: 'web_development',
+      category: 'web_dev',
+      name,
+      businessName,
+      email,
+      phone,
+      whatsapp,
+      normalizedPhone: normalizePhone(phone),
+      status: data.status || 'active',
+
+      // Project & Quotation Linkage
+      projectId,
+      projectName,
+      projectDescription,
+      totalProjectCost,
+      tokenPaid,
+      additionalPaid: 0,
+      totalPaid: tokenPaid,
+      remainingAmount,
+      paymentStatus,
+
+      // Timeline
+      startDate,
+      deliveryDate,
+      completionDate: deliveryDate,
+
+      // Quotation
+      quotationId,
+      quotationNumber,
+      quotationItems: quotationTotals.items,
+      subtotal: quotationTotals.subtotal,
+      discountType: quotationTotals.discountType,
+      discountValue: quotationTotals.discountValue,
+      discountAmount: quotationTotals.discountAmount,
+      paymentTerms,
+
+      // Project delivery tracking & documents
+      deliveryStatus: data.deliveryStatus || 'planning',
+      deliverables,
+      documents,
+
+      notes: (data.notes || '').trim(),
+      onboardingEmailStatus: 'pending',
+      deliveryEmailStatus: 'pending',
+
+      createdAt: data.createdAt || now,
+      updatedAt: now,
+    };
+    await database.clients.add(clientRecord);
+
+    // 4. Record advance/token payment in payments table
+    if (tokenPaid > 0 && database.payments) {
+      await paymentsRepo.create(
+        {
+          clientId: id,
+          projectId,
+          amount: tokenPaid,
+          type: 'token',
+          status: 'completed',
+          paymentMethod: data.tokenPaymentMethod || 'bank_transfer',
+          paidAt: new Date(startDate).toISOString(),
+          notes: `Advance token for ${projectName} (Delivery: ${deliveryDate})`,
+        },
+        { allowDuplicate: true },
+        database
+      );
+    }
+
+    return {
+      client: clientRecord,
+      project: projectRecord,
+      quotation: quotationRecord,
+    };
+  },
+
+  /**
+   * Record payment for Web Development project
+   */
+  async recordWebDevPayment(clientId, { amount, paymentMethod = 'bank_transfer', paidAt, notes }, database = db) {
+    const client = await database.clients.get(clientId);
+    if (!client) throw new Error(`Client with id ${clientId} not found`);
+
+    const payAmount = roundMoney(Number(amount) || 0);
+    if (payAmount <= 0) {
+      throw new Error('Payment amount must be greater than zero');
+    }
+
+    const currentRemaining = roundMoney(Number(client.remainingAmount || 0));
+    if (payAmount > currentRemaining) {
+      throw new Error(`Payment (₹${payAmount}) cannot exceed remaining balance (₹${currentRemaining})`);
+    }
+
+    const newAdditional = roundMoney((Number(client.additionalPaid) || 0) + payAmount);
+    const newTotalPaid = roundMoney((Number(client.tokenPaid) || 0) + newAdditional);
+    const totalCost = Number(client.totalProjectCost || client.monthlyPlanAmount || 0);
+    const newRemaining = roundMoney(Math.max(0, totalCost - newTotalPaid));
+    const newStatus = newRemaining === 0 ? 'paid' : 'partially_paid';
+
+    const now = new Date().toISOString();
+    const paymentRecord = {
+      clientId,
+      projectId: client.projectId || null,
+      amount: payAmount,
+      type: 'additional',
+      status: 'completed',
+      paymentMethod,
+      paidAt: paidAt ? new Date(paidAt).toISOString() : now,
+      notes: notes || `Project payment for ${client.projectName || client.businessName || 'Web Project'}`,
+    };
+
+    if (database.payments) {
+      await paymentsRepo.create(paymentRecord, { allowDuplicate: true }, database);
+    }
+
+    // Update client
+    await database.clients.update(clientId, {
+      additionalPaid: newAdditional,
+      totalPaid: newTotalPaid,
+      remainingAmount: newRemaining,
+      paymentStatus: newStatus,
+      updatedAt: now,
+    });
+
+    // Update linked project if exists
+    if (client.projectId && database.projects) {
+      await database.projects.update(client.projectId, {
+        additionalPaid: newAdditional,
+        totalPaid: newTotalPaid,
+        remainingBalance: newRemaining,
+        paymentStatus: newStatus,
+        updatedAt: now,
+      });
+    }
+
+    return database.clients.get(clientId);
+  },
+
+  /**
+   * Update Web Dev delivery tracking status (planning, in_progress, review, completed)
+   */
+  async updateWebDevDeliveryStatus(clientId, status, database = db) {
+    const client = await database.clients.get(clientId);
+    if (!client) throw new Error(`Client with id ${clientId} not found`);
+
+    const now = new Date().toISOString();
+    const updates = {
+      deliveryStatus: status,
+      updatedAt: now,
+    };
+
+    if (status === 'completed') {
+      updates.status = 'completed';
+    } else if (client.status === 'completed' && status !== 'completed') {
+      updates.status = 'active';
+    }
+
+    await database.clients.update(clientId, updates);
+
+    if (client.projectId && database.projects) {
+      await database.projects.update(client.projectId, {
+        status,
+        completedAt: status === 'completed' ? now : null,
+        updatedAt: now,
+      });
+    }
+
+    return database.clients.get(clientId);
+  },
+
+  /**
+   * Add a project document / asset link
+   */
+  async addProjectDocument(clientId, { title, type = 'link', url, notes = '' }, database = db) {
+    const client = await database.clients.get(clientId);
+    if (!client) throw new Error(`Client with id ${clientId} not found`);
+
+    const now = new Date().toISOString();
+    const docId = generateId();
+    const newDoc = {
+      id: docId,
+      title: (title || 'Project Link').trim(),
+      type: type || 'link', // figma, github, staging, live, drive, doc, other
+      url: (url || '').trim(),
+      notes: (notes || '').trim(),
+      addedAt: now,
+    };
+
+    const updatedDocuments = [...(client.documents || []), newDoc];
+    await database.clients.update(clientId, {
+      documents: updatedDocuments,
+      updatedAt: now,
+    });
+
+    if (client.projectId && database.projects) {
+      await database.projects.update(client.projectId, {
+        documents: updatedDocuments,
+        updatedAt: now,
+      });
+    }
+
+    return database.clients.get(clientId);
+  },
+
+  /**
+   * Remove a project document / asset link
+   */
+  async removeProjectDocument(clientId, docId, database = db) {
+    const client = await database.clients.get(clientId);
+    if (!client) throw new Error(`Client with id ${clientId} not found`);
+
+    const now = new Date().toISOString();
+    const updatedDocuments = (client.documents || []).filter((d) => d.id !== docId);
+
+    await database.clients.update(clientId, {
+      documents: updatedDocuments,
+      updatedAt: now,
+    });
+
+    if (client.projectId && database.projects) {
+      await database.projects.update(client.projectId, {
+        documents: updatedDocuments,
+        updatedAt: now,
+      });
+    }
+
+    return database.clients.get(clientId);
+  },
+
+  /**
+   * Toggle completion state of a deliverable item
+   */
+  async toggleProjectDeliverable(clientId, deliverableId, isCompleted, database = db) {
+    const client = await database.clients.get(clientId);
+    if (!client) throw new Error(`Client with id ${clientId} not found`);
+
+    const now = new Date().toISOString();
+    const updatedDeliverables = (client.deliverables || []).map((d) => {
+      if (d.id === deliverableId) {
+        return {
+          ...d,
+          status: isCompleted ? 'completed' : 'pending',
+          completedAt: isCompleted ? now : null,
+        };
+      }
+      return d;
+    });
+
+    await database.clients.update(clientId, {
+      deliverables: updatedDeliverables,
+      updatedAt: now,
+    });
+
+    if (client.projectId && database.projects) {
+      await database.projects.update(client.projectId, {
+        deliverables: updatedDeliverables,
+        updatedAt: now,
+      });
+    }
+
+    return database.clients.get(clientId);
+  },
+
+  /**
+   * Add a new deliverable milestone item
+   */
+  async addProjectDeliverable(clientId, title, database = db) {
+    const client = await database.clients.get(clientId);
+    if (!client) throw new Error(`Client with id ${clientId} not found`);
+
+    const now = new Date().toISOString();
+    const newDeliverable = {
+      id: generateId(),
+      title: (title || '').trim(),
+      status: 'pending',
+      completedAt: null,
+      createdAt: now,
+    };
+
+    const updatedDeliverables = [...(client.deliverables || []), newDeliverable];
+
+    await database.clients.update(clientId, {
+      deliverables: updatedDeliverables,
+      updatedAt: now,
+    });
+
+    if (client.projectId && database.projects) {
+      await database.projects.update(client.projectId, {
+        deliverables: updatedDeliverables,
+        updatedAt: now,
+      });
     }
 
     return database.clients.get(clientId);

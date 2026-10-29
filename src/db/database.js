@@ -64,6 +64,27 @@ export class BizCRMDatabase extends Dexie {
           });
       });
 
+    // Schema Version 3 — Web Development Client Workflow & Quotations
+    this.version(3)
+      .stores({
+        clients:
+          'id, name, phone, normalizedPhone, businessName, email, status, category, clientType, *serviceIds, nextRenewalDate, createdAt, updatedAt, archivedAt',
+        projects:
+          'id, clientId, status, *serviceIds, deadline, startDate, createdAt, updatedAt, completedAt',
+        quotations:
+          'id, quotationNumber, clientId, projectId, status, issueDate, validUntil, createdAt, updatedAt',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('clients')
+          .toCollection()
+          .modify((client) => {
+            if (!client.clientType) {
+              client.clientType = client.category === 'web_dev' ? 'web_development' : 'content_management';
+            }
+          });
+      });
+
     // Populate hook for initial seed
     this.on('populate', () => {
       const now = new Date().toISOString();

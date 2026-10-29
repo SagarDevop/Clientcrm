@@ -24,6 +24,7 @@ export async function exportDatabaseToJson(database = db) {
     campaigns,
     expenses,
     email_jobs,
+    quotations,
   ] = await Promise.all([
     database.clients.toArray(),
     database.leads.toArray(),
@@ -41,6 +42,7 @@ export async function exportDatabaseToJson(database = db) {
     database.campaigns ? database.campaigns.toArray() : [],
     database.expenses ? database.expenses.toArray() : [],
     database.email_jobs ? database.email_jobs.toArray() : [],
+    database.quotations ? database.quotations.toArray() : [],
   ]);
 
   const backupObject = {
@@ -64,6 +66,7 @@ export async function exportDatabaseToJson(database = db) {
       campaigns: campaigns.length,
       expenses: expenses.length,
       email_jobs: email_jobs.length,
+      quotations: quotations.length,
     },
     data: {
       clients,
@@ -82,6 +85,7 @@ export async function exportDatabaseToJson(database = db) {
       campaigns,
       expenses,
       email_jobs,
+      quotations,
     },
   };
 
@@ -225,6 +229,7 @@ export async function restoreBackup(parsedBackup, strategy = 'replace', database
     database.campaigns,
     database.expenses,
     database.email_jobs,
+    database.quotations,
   ].filter(Boolean);
 
   return database.transaction('rw', tables, async () => {
@@ -244,7 +249,7 @@ export async function restoreBackup(parsedBackup, strategy = 'replace', database
     if (data.services?.length) await database.services.bulkPut(data.services);
     if (data.reminders?.length) await database.reminders.bulkPut(data.reminders);
 
-    // v2 tables
+    // v2 & v3 tables
     if (data.invoices?.length && database.invoices) await database.invoices.bulkPut(data.invoices);
     if (data.subscriptions?.length && database.subscriptions) await database.subscriptions.bulkPut(data.subscriptions);
     if (data.milestones?.length && database.milestones) await database.milestones.bulkPut(data.milestones);
@@ -252,6 +257,7 @@ export async function restoreBackup(parsedBackup, strategy = 'replace', database
     if (data.campaigns?.length && database.campaigns) await database.campaigns.bulkPut(data.campaigns);
     if (data.expenses?.length && database.expenses) await database.expenses.bulkPut(data.expenses);
     if (data.email_jobs?.length && database.email_jobs) await database.email_jobs.bulkPut(data.email_jobs);
+    if (data.quotations?.length && database.quotations) await database.quotations.bulkPut(data.quotations);
 
     if (strategy === 'replace' && data.settings?.length) {
       await database.settings.clear();

@@ -585,7 +585,7 @@ export async function sendClientCompletionEmails({ client, database = db, forceR
     }
   }
 
-  if (database?.clients) {
+    if (database?.clients) {
     const finalStatus = results.clientSent ? 'sent' : 'failed';
     await database.clients.update(client.id, {
       completionEmailStatus: finalStatus,
@@ -596,3 +596,340 @@ export async function sendClientCompletionEmails({ client, database = db, forceR
 
   return results;
 }
+
+/**
+ * 5. Web Development Onboarding & Quotation Email to Client
+ */
+export function buildWebDevOnboardingEmailHtml({ client, project, quotation, advanceAmount, remainingAmount }) {
+  const clientName = client.name || 'Valued Client';
+  const businessName = client.businessName || 'your business';
+  const projectName = project?.name || quotation?.projectName || client.projectName || 'Web Development Project';
+  const projectDescription = project?.description || quotation?.projectDescription || client.projectDescription || '';
+  const totalCost = Number(quotation?.totalAmount || client.totalProjectCost || 0).toLocaleString();
+  const advance = Number(advanceAmount !== undefined ? advanceAmount : client.tokenPaid || 0).toLocaleString();
+  const remaining = Number(remainingAmount !== undefined ? remainingAmount : client.remainingAmount || 0).toLocaleString();
+  const startDate = project?.startDate || client.startDate || 'Immediate';
+  const deliveryDate = project?.deadline || client.deliveryDate || client.completionDate || 'As scheduled';
+  const quotationNumber = quotation?.quotationNumber || client.quotationNumber || 'QT-WEB';
+  const paymentTerms = quotation?.paymentTerms || client.paymentTerms || '50% advance, 50% upon final delivery';
+
+  const items = quotation?.items || client.quotationItems || [
+    { name: projectName, description: projectDescription, quantity: 1, total: totalCost },
+  ];
+
+  const itemsHtml = items
+    .map(
+      (it, idx) => `
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 10px 8px; color: #64748b; font-size: 12px; font-family: monospace;">${idx + 1}</td>
+        <td style="padding: 10px 8px;">
+          <strong style="color: #0f172a; font-size: 13px;">${it.name}</strong>
+          ${it.description ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${it.description}</div>` : ''}
+        </td>
+        <td style="padding: 10px 8px; text-align: center; color: #334155; font-size: 12px;">${it.quantity || 1}</td>
+        <td style="padding: 10px 8px; text-align: right; font-weight: 700; color: #0f172a; font-size: 13px;">₹${Number(it.total || it.unitPrice || 0).toLocaleString()}</td>
+      </tr>`
+    )
+    .join('');
+
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 620px; margin: 0 auto; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden; color: #1c1917;">
+      <div style="background-color: #047857; padding: 26px 22px; text-align: center;">
+        <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">
+          🚀 Welcome Onboard — Web Development Agreement
+        </h1>
+        <div style="color: #d1fae5; font-size: 13px; margin-top: 4px;">Jugarr Agency • Project Quotation & Confirmation</div>
+      </div>
+      
+      <div style="padding: 32px 28px; font-size: 14px; line-height: 1.6;">
+        <p style="margin-top: 0; font-size: 16px;">Hi <strong>${clientName}</strong>,</p>
+        <p>Thank you for partnering with us! We are excited to begin building <strong>${projectName}</strong> for <strong>${businessName}</strong>.</p>
+        <p>Here is your official project scope, agreed pricing, and expected delivery milestone schedule.</p>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 24px 0;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+            <span style="font-size: 12px; text-transform: uppercase; font-weight: 700; color: #475569;">Quotation #${quotationNumber}</span>
+            <span style="font-size: 12px; color: #059669; font-weight: 600;">Status: Confirmed</span>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+            <thead>
+              <tr style="background: #f1f5f9; text-align: left; font-size: 11px; text-transform: uppercase; color: #475569;">
+                <th style="padding: 6px 8px; width: 24px;">#</th>
+                <th style="padding: 6px 8px;">Service Deliverable</th>
+                <th style="padding: 6px 8px; width: 40px; text-align: center;">Qty</th>
+                <th style="padding: 6px 8px; width: 90px; text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse; border-top: 2px solid #cbd5e1; padding-top: 10px;">
+            <tr>
+              <td style="padding: 6px 0; font-weight: 700; color: #334155;">Total Project Cost:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 800; font-size: 15px; color: #0f172a;">₹${totalCost}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Advance Received:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 700; color: #059669;">₹${advance}</td>
+            </tr>
+            <tr style="border-top: 1px dashed #cbd5e1;">
+              <td style="padding: 8px 0; font-weight: 700; color: #334155;">Remaining Balance:</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 800; font-size: 15px; color: #dc2626;">₹${remaining}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Project Kickoff Date:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #0f172a;">${startDate}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Expected Delivery:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 700; color: #047857;">${deliveryDate}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #ffffff; border-left: 3px solid #047857; padding: 12px 16px; margin-bottom: 24px; font-size: 12px; color: #334155;">
+          <strong>Payment Terms:</strong> ${paymentTerms}
+        </div>
+
+        <p>Our team is now initiating wireframes and core architecture. We will share development milestones and preview links for your review.</p>
+        <p style="margin-top: 24px; margin-bottom: 0;">
+          Best regards,<br>
+          <strong>Sagar & the Jugarr Agency Team</strong>
+        </p>
+      </div>
+
+      <div style="padding: 16px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; background: #fafafa;">
+        Sent via BizCRM Web Development Suite • Jugarr Agency
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * 6. Web Development Owner Notification Email
+ */
+export function buildWebDevOwnerEmailHtml({ client, project, quotation, advanceAmount, remainingAmount }) {
+  const clientName = client.name || 'Client';
+  const businessName = client.businessName || '';
+  const projectName = project?.name || client.projectName || 'Web Development Project';
+  const totalCost = Number(quotation?.totalAmount || client.totalProjectCost || 0).toLocaleString();
+  const advance = Number(advanceAmount !== undefined ? advanceAmount : client.tokenPaid || 0).toLocaleString();
+  const remaining = Number(remainingAmount !== undefined ? remainingAmount : client.remainingAmount || 0).toLocaleString();
+  const deliveryDate = project?.deadline || client.deliveryDate || 'Scheduled';
+
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden; color: #1c1917;">
+      <div style="background-color: #0f172a; padding: 22px 20px; text-align: center;">
+        <h2 style="margin: 0; color: #ffffff; font-size: 18px; font-weight: 800;">
+          💻 New Web Dev Client Onboarded
+        </h2>
+        <div style="color: #94a3b8; font-size: 12px; margin-top: 4px;">BizCRM Owner Alert</div>
+      </div>
+      <div style="padding: 28px 24px; font-size: 14px; line-height: 1.6;">
+        <p>Hello Sagar,</p>
+        <p>A new web development project has been created for <strong>${clientName}</strong> (${businessName}).</p>
+        
+        <div style="background: #f1f5f9; border-radius: 12px; padding: 18px; margin: 20px 0;">
+          <table style="width: 100%; font-size: 13px;">
+            <tr><td style="color: #64748b;">Project:</td><td style="font-weight: 700;">${projectName}</td></tr>
+            <tr><td style="color: #64748b;">Client:</td><td>${clientName} (${businessName})</td></tr>
+            <tr><td style="color: #64748b;">Email / Phone:</td><td>${client.email} • ${client.phone}</td></tr>
+            <tr><td style="color: #64748b;">Contract Value:</td><td style="font-weight: 700; color: #0f172a;">₹${totalCost}</td></tr>
+            <tr><td style="color: #64748b;">Advance Received:</td><td style="font-weight: 700; color: #059669;">₹${advance}</td></tr>
+            <tr><td style="color: #64748b;">Remaining Due:</td><td style="font-weight: 800; color: #dc2626;">₹${remaining}</td></tr>
+            <tr><td style="color: #64748b;">Delivery Deadline:</td><td style="font-weight: 700; color: #047857;">${deliveryDate}</td></tr>
+          </table>
+        </div>
+        <p>The client has been emailed their official quotation and project scope.</p>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * 7. Web Development Project Delivery & Handover Email
+ */
+export function buildWebDevDeliveryEmailHtml({ client, project, remainingAmount }) {
+  const clientName = client.name || 'Valued Client';
+  const businessName = client.businessName || 'your business';
+  const projectName = project?.name || client.projectName || 'Web Development Project';
+  const totalCost = Number(client.totalProjectCost || 0).toLocaleString();
+  const outstandingNum = Number(remainingAmount !== undefined ? remainingAmount : client.remainingAmount || 0);
+  const outstanding = outstandingNum.toLocaleString();
+  const isFullyPaid = outstandingNum <= 0;
+
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden; color: #1c1917;">
+      <div style="background-color: ${isFullyPaid ? '#047857' : '#d97706'}; padding: 24px 20px; text-align: center;">
+        <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 800;">
+          🎉 Your Web Development Project is Completed!
+        </h1>
+        <div style="color: #d1fae5; font-size: 13px; margin-top: 4px;">Jugarr Agency • Project Handover & Delivery</div>
+      </div>
+      
+      <div style="padding: 32px 28px; font-size: 14px; line-height: 1.6;">
+        <p style="margin-top: 0; font-size: 16px;">Hi <strong>${clientName}</strong>,</p>
+        <p>We are delighted to announce that development for <strong>${projectName}</strong> (${businessName}) has been successfully completed!</p>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+          <h3 style="margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; color: #475569;">Delivery Summary</h3>
+          <table style="width: 100%; font-size: 13px;">
+            <tr><td style="padding: 4px 0; color: #64748b;">Project Name:</td><td style="font-weight: 700;">${projectName}</td></tr>
+            <tr><td style="padding: 4px 0; color: #64748b;">Total Project Cost:</td><td style="font-weight: 700;">₹${totalCost}</td></tr>
+            <tr><td style="padding: 4px 0; color: #64748b;">Balance Due:</td><td style="font-weight: 800; color: ${isFullyPaid ? '#047857' : '#dc2626'};">₹${outstanding} ${isFullyPaid ? '(Paid in Full)' : ''}</td></tr>
+          </table>
+        </div>
+
+        ${
+          isFullyPaid
+            ? `<div style="background: #ecfdf5; border-radius: 8px; padding: 14px 16px; color: #065f46; margin-bottom: 20px;">
+                <strong>Payment Cleared:</strong> All accounts for this project are fully settled. All production credentials, source repositories, and deployment keys have been transferred.
+               </div>`
+            : `<p style="color: #b45309; font-weight: 600;">
+                Please arrange clearance of the final balance of <strong>₹${outstanding}</strong> to receive final admin ownership.
+               </p>`
+        }
+
+        <p>Thank you for partnering with Jugarr Agency. It was a pleasure building your application!</p>
+        <p style="margin-top: 24px; margin-bottom: 0;">
+          Best regards,<br>
+          <strong>Sagar & Jugarr Agency</strong>
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Dispatch Web Development Onboarding & Quotation Emails (Client + Owner)
+ */
+export async function sendWebDevOnboardingEmails({ client, project, quotation, advanceAmount, remainingAmount, database = db }) {
+  const ownerEmail = 'warshasingh21@gmail.com';
+  const results = { clientSent: false, ownerSent: false, errors: [] };
+
+  const idempotencyClient = `onboard_web_${client.id}_${quotation?.quotationNumber || client.quotationNumber || 'init'}`;
+  const idempotencyOwner = `onboard_web_owner_${client.id}_${quotation?.quotationNumber || client.quotationNumber || 'init'}`;
+
+  // 1. Send to Client
+  if (client.email) {
+    try {
+      const html = buildWebDevOnboardingEmailHtml({ client, project, quotation, advanceAmount, remainingAmount });
+      await dispatchEmail({
+        toEmail: client.email,
+        toName: client.name,
+        subject: `Web Development Quotation & Project Confirmation — ${project?.name || client.projectName || 'Your Website'}`,
+        htmlContent: html,
+      });
+      results.clientSent = true;
+
+      if (database?.email_jobs) {
+        await database.email_jobs.put({
+          id: generateId(),
+          recipientEmail: client.email,
+          templateType: 'webdev_onboarding_client',
+          entityType: 'client',
+          entityId: client.id,
+          status: 'sent',
+          idempotencyKey: idempotencyClient,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      results.errors.push(`Client email: ${err.message}`);
+      if (database?.email_jobs) {
+        await database.email_jobs.put({
+          id: generateId(),
+          recipientEmail: client.email,
+          templateType: 'webdev_onboarding_client',
+          entityType: 'client',
+          entityId: client.id,
+          status: 'failed',
+          error: err.message,
+          idempotencyKey: idempotencyClient,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  // 2. Send to Owner
+  if (ownerEmail) {
+    try {
+      const ownerHtml = buildWebDevOwnerEmailHtml({ client, project, quotation, advanceAmount, remainingAmount });
+      await dispatchEmail({
+        toEmail: ownerEmail,
+        toName: 'Sagar (Agency Owner)',
+        subject: `💻 New Web Dev Project: ${client.name} — ${project?.name || client.projectName || 'Project'}`,
+        htmlContent: ownerHtml,
+      });
+      results.ownerSent = true;
+    } catch (err) {
+      results.errors.push(`Owner notification: ${err.message}`);
+    }
+  }
+
+  if (database?.clients) {
+    const finalStatus = results.clientSent ? 'sent' : 'failed';
+    await database.clients.update(client.id, {
+      onboardingEmailStatus: finalStatus,
+      onboardingEmailError: results.errors.join('; ') || null,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Dispatch Web Development Delivery & Handover Emails
+ */
+export async function sendWebDevDeliveryEmails({ client, project, database = db }) {
+  const results = { clientSent: false, ownerSent: false, errors: [] };
+  const idempotencyKey = `delivery_web_${client.id}_${project?.id || client.projectId || 'final'}`;
+
+  if (client.email) {
+    try {
+      const html = buildWebDevDeliveryEmailHtml({
+        client,
+        project,
+        remainingAmount: client.remainingAmount,
+      });
+      await dispatchEmail({
+        toEmail: client.email,
+        toName: client.name,
+        subject: `Your Web Development Project has been Completed! — ${project?.name || client.projectName || 'Website'}`,
+        htmlContent: html,
+      });
+      results.clientSent = true;
+
+      if (database?.email_jobs) {
+        await database.email_jobs.put({
+          id: generateId(),
+          recipientEmail: client.email,
+          templateType: 'webdev_delivery_client',
+          entityType: 'client',
+          entityId: client.id,
+          status: 'sent',
+          idempotencyKey,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      results.errors.push(`Client delivery email: ${err.message}`);
+    }
+  }
+
+  if (database?.clients) {
+    const finalStatus = results.clientSent ? 'sent' : 'failed';
+    await database.clients.update(client.id, {
+      deliveryEmailStatus: finalStatus,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return results;
+}
+
