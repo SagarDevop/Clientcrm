@@ -297,12 +297,14 @@ export function ClientDetailPage() {
             description: client.projectDescription,
             startDate: client.startDate,
             deadline: client.deliveryDate,
+            documents: client.documents || [],
           },
           quotation: quotationRecord || {
             quotationNumber: client.quotationNumber,
             items: client.quotationItems,
             totalAmount: planAmount,
             paymentTerms: client.paymentTerms,
+            documents: client.documents || [],
           },
           advanceAmount: tokenPaid,
           remainingAmount,
@@ -339,7 +341,10 @@ export function ClientDetailPage() {
       if (isWebDev) {
         const res = await sendWebDevDeliveryEmails({
           client,
-          project: { name: client.projectName },
+          project: {
+            name: client.projectName,
+            documents: client.documents || [],
+          },
         });
         if (res.clientSent) {
           setEmailActionFeedback({ type: 'success', text: `Project delivery & handover notice sent to ${client.email}` });

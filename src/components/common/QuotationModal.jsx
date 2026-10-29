@@ -122,7 +122,13 @@ export function QuotationModal({ client, quotation, isOpen, onClose }) {
 
       const html = buildWebDevOnboardingEmailHtml({
         client,
-        project: { name: projectName, description: projectDescription, startDate, deadline: deliveryDate },
+        project: {
+          name: projectName,
+          description: projectDescription,
+          startDate,
+          deadline: deliveryDate,
+          documents: client.documents || [],
+        },
         quotation: {
           quotationNumber,
           items,
@@ -130,6 +136,7 @@ export function QuotationModal({ client, quotation, isOpen, onClose }) {
           discountAmount,
           totalAmount: totalCost,
           paymentTerms,
+          documents: client.documents || [],
         },
         advanceAmount: advancePaid,
         remainingAmount: remainingBalance,

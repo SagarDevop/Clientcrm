@@ -311,7 +311,7 @@ describe('Web Development Client Workflow & Quotation Engine', () => {
   });
 
   describe('6. Web Development Email Templates', () => {
-    it('generates onboarding & quotation email with exact figures and line items', () => {
+    it('generates onboarding & quotation email with exact figures, line items, and clickable links', () => {
       const client = {
         name: 'Gaurav Kapoor',
         businessName: 'Kapoor Travels',
@@ -320,16 +320,30 @@ describe('Web Development Client Workflow & Quotation Engine', () => {
         totalProjectCost: 60000,
         tokenPaid: 20000,
         remainingAmount: 40000,
+        documents: [
+          {
+            id: 'doc_1',
+            title: 'Figma UI Mockup',
+            type: 'figma',
+            url: 'https://figma.com/file/mockup123',
+          },
+          {
+            id: 'doc_2',
+            title: 'GitHub Repository',
+            type: 'github',
+            url: 'https://github.com/kapoor/tour-engine',
+          },
+        ],
       };
 
       const quotation = {
         quotationNumber: 'QT-WEB-202610-1234',
         items: [
-          { name: 'Search & Booking UI', quantity: 1, unitPrice: 35000, total: 35000 },
+          { name: 'Search & Booking UI (see https://preview.kapoor.com)', quantity: 1, unitPrice: 35000, total: 35000 },
           { name: 'Payment Gateway Integration', quantity: 1, unitPrice: 25000, total: 25000 },
         ],
         totalAmount: 60000,
-        paymentTerms: '50% advance, 50% upon delivery',
+        paymentTerms: '50% advance, 50% upon delivery via https://kapoor.com/terms',
       };
 
       const html = buildWebDevOnboardingEmailHtml({
@@ -348,9 +362,23 @@ describe('Web Development Client Workflow & Quotation Engine', () => {
       expect(html).toContain('20,000');
       expect(html).toContain('40,000');
       expect(html).toContain('Search & Booking UI');
+
+      // Verify clickable document links
+      expect(html).toContain('href="https://figma.com/file/mockup123"');
+      expect(html).toContain('Figma UI Mockup');
+      expect(html).toContain('href="https://github.com/kapoor/tour-engine"');
+      expect(html).toContain('Open Link &rarr;');
+
+      // Verify autolink in description and payment terms
+      expect(html).toContain('href="https://preview.kapoor.com"');
+      expect(html).toContain('href="https://kapoor.com/terms"');
+
+      // Verify UPI payment link
+      expect(html).toContain('upi://pay?');
+      expect(html).toContain('Tap to Pay ₹40,000 via UPI');
     });
 
-    it('generates owner notification and delivery completion emails', () => {
+    it('generates owner notification and delivery completion emails with clickable links', () => {
       const client = {
         name: 'Neha Sen',
         businessName: 'Sen Architecture',
@@ -360,6 +388,14 @@ describe('Web Development Client Workflow & Quotation Engine', () => {
         remainingAmount: 15000,
         email: 'neha@sen.com',
         phone: '9888888888',
+        documents: [
+          {
+            id: 'doc_1',
+            title: 'Production Staging',
+            type: 'staging',
+            url: 'https://staging.senarch.com',
+          },
+        ],
       };
 
       const ownerHtml = buildWebDevOwnerEmailHtml({
@@ -372,6 +408,7 @@ describe('Web Development Client Workflow & Quotation Engine', () => {
       expect(ownerHtml).toContain('Neha Sen');
       expect(ownerHtml).toContain('Portfolio Website');
       expect(ownerHtml).toContain('30,000');
+      expect(ownerHtml).toContain('href="https://staging.senarch.com"');
 
       const deliveryHtml = buildWebDevDeliveryEmailHtml({
         client,
@@ -379,8 +416,10 @@ describe('Web Development Client Workflow & Quotation Engine', () => {
         remainingAmount: 0,
       });
 
-      expect(deliveryHtml).toContain('Completed');
+      expect(deliveryHtml).toContain('Neha Sen');
+      expect(deliveryHtml).toContain('Portfolio Website');
       expect(deliveryHtml).toContain('Payment Cleared');
+      expect(deliveryHtml).toContain('href="https://staging.senarch.com"');
     });
   });
 

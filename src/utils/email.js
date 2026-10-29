@@ -8,6 +8,7 @@
  */
 import { db } from '../db/database.js';
 import { generateId } from './id.js';
+import { buildUpiLink, getUpiQrCodeUrl, getSavedUpiId, getSavedUpiName } from './upi.js';
 
 export function getBrevoApiKey() {
   if (typeof window !== 'undefined') {
@@ -165,13 +166,88 @@ async function dispatchDirectToBrevo(payload) {
 }
 
 /**
- * Convert user multiline text into HTML preserving line breaks
+ * Autolink raw URLs into styled, clickable HTML anchors
+ */
+export function autolink(text) {
+  if (!text) return '';
+  const urlRegex = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
+  return String(text).replace(urlRegex, (matchedUrl) => {
+    let url = matchedUrl;
+    let trailing = '';
+    const punctuationMatch = url.match(/[),.;!]+$/);
+    if (punctuationMatch) {
+      trailing = punctuationMatch[0];
+      url = url.slice(0, -trailing.length);
+    }
+    const href = url.startsWith('http') ? url : `https://${url}`;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: #047857; font-weight: 600; text-decoration: underline; word-break: break-all;">${url}</a>${trailing}`;
+  });
+}
+
+/**
+ * Render Project Documents & External Asset Links Table
+ */
+export function renderEmailDocuments(documents) {
+  if (!Array.isArray(documents) || documents.length === 0) return '';
+
+  const validDocs = documents.filter((d) => d && (d.url || d.link));
+  if (validDocs.length === 0) return '';
+
+  const docTypeLabels = {
+    figma: '🎨 Figma UI Mockup',
+    github: '💻 GitHub Repository',
+    staging: '🚀 Staging / Demo URL',
+    live: '🌐 Live Website',
+    drive: '📁 Google Drive Assets',
+    doc: '📄 Project Scope Document',
+    other: '🔗 Project Asset Link',
+  };
+
+  const rows = validDocs
+    .map((doc) => {
+      const rawUrl = (doc.url || doc.link || '').trim();
+      const href = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+      const title = doc.title || docTypeLabels[doc.type] || 'Project Link';
+      const typeLabel = docTypeLabels[doc.type] || '🔗 Asset Link';
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <td style="padding: 12px 10px;">
+            <div style="font-weight: 700; color: #0f172a; font-size: 13px;">${title}</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${typeLabel}</div>
+            <div style="margin-top: 4px;">
+              <a href="${href}" target="_blank" rel="noopener noreferrer" style="color: #047857; font-size: 11px; text-decoration: underline; word-break: break-all;">${rawUrl}</a>
+            </div>
+          </td>
+          <td style="padding: 12px 10px; text-align: right; vertical-align: middle;">
+            <a href="${href}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #047857; color: #ffffff; text-decoration: none; font-size: 12px; font-weight: 700; padding: 7px 16px; border-radius: 8px; white-space: nowrap;">
+              Open Link &rarr;
+            </a>
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  return `
+    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; margin: 24px 0; overflow: hidden;">
+      <div style="background: #f1f5f9; padding: 12px 14px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #334155;">
+        🔗 Relevant Project Links & Assets
+      </div>
+      <table style="width: 100%; border-collapse: collapse;">
+        ${rows}
+      </table>
+    </div>
+  `;
+}
+
+/**
+ * Convert user multiline text into HTML preserving line breaks and auto-linking URLs
  */
 function formatParagraphs(text) {
   if (!text) return '';
   return text
     .split(/\n\s*\n/)
-    .map((p) => `<p style="margin: 0 0 12px 0; line-height: 1.6;">${p.replace(/\n/g, '<br/>')}</p>`)
+    .map((p) => `<p style="margin: 0 0 12px 0; line-height: 1.6;">${autolink(p).replace(/\n/g, '<br/>')}</p>`)
     .join('');
 }
 
@@ -605,16 +681,35 @@ export function buildWebDevOnboardingEmailHtml({ client, project, quotation, adv
   const businessName = client.businessName || 'your business';
   const projectName = project?.name || quotation?.projectName || client.projectName || 'Web Development Project';
   const projectDescription = project?.description || quotation?.projectDescription || client.projectDescription || '';
-  const totalCost = Number(quotation?.totalAmount || client.totalProjectCost || 0).toLocaleString();
-  const advance = Number(advanceAmount !== undefined ? advanceAmount : client.tokenPaid || 0).toLocaleString();
-  const remaining = Number(remainingAmount !== undefined ? remainingAmount : client.remainingAmount || 0).toLocaleString();
+  const totalCostNum = Number(quotation?.totalAmount || client.totalProjectCost || 0);
+  const totalCost = totalCostNum.toLocaleString();
+  const advanceNum = Number(advanceAmount !== undefined ? advanceAmount : client.tokenPaid || 0);
+  const advance = advanceNum.toLocaleString();
+  const remainingNum = Number(remainingAmount !== undefined ? remainingAmount : client.remainingAmount || 0);
+  const remaining = remainingNum.toLocaleString();
   const startDate = project?.startDate || client.startDate || 'Immediate';
   const deliveryDate = project?.deadline || client.deliveryDate || client.completionDate || 'As scheduled';
   const quotationNumber = quotation?.quotationNumber || client.quotationNumber || 'QT-WEB';
   const paymentTerms = quotation?.paymentTerms || client.paymentTerms || '50% advance, 50% upon final delivery';
 
+  // Extract documents from client, project, or quotation
+  const documents = client.documents || project?.documents || quotation?.documents || [];
+  const documentsHtml = renderEmailDocuments(documents);
+
+  // UPI configuration for advance or remaining payment
+  const upiId = getSavedUpiId();
+  const upiName = getSavedUpiName();
+  const paymentDueAmt = remainingNum > 0 ? remainingNum : totalCostNum;
+  const upiLink = buildUpiLink({
+    upiId,
+    payeeName: upiName,
+    amount: paymentDueAmt,
+    transactionNote: `Web Project - ${clientName}`,
+  });
+  const upiQrUrl = upiLink ? getUpiQrCodeUrl(upiLink, 150) : '';
+
   const items = quotation?.items || client.quotationItems || [
-    { name: projectName, description: projectDescription, quantity: 1, total: totalCost },
+    { name: projectName, description: projectDescription, quantity: 1, total: totalCostNum },
   ];
 
   const itemsHtml = items
@@ -623,8 +718,8 @@ export function buildWebDevOnboardingEmailHtml({ client, project, quotation, adv
       <tr style="border-bottom: 1px solid #f1f5f9;">
         <td style="padding: 10px 8px; color: #64748b; font-size: 12px; font-family: monospace;">${idx + 1}</td>
         <td style="padding: 10px 8px;">
-          <strong style="color: #0f172a; font-size: 13px;">${it.name}</strong>
-          ${it.description ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${it.description}</div>` : ''}
+          <strong style="color: #0f172a; font-size: 13px;">${autolink(it.name)}</strong>
+          ${it.description ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${autolink(it.description)}</div>` : ''}
         </td>
         <td style="padding: 10px 8px; text-align: center; color: #334155; font-size: 12px;">${it.quantity || 1}</td>
         <td style="padding: 10px 8px; text-align: right; font-weight: 700; color: #0f172a; font-size: 13px;">₹${Number(it.total || it.unitPrice || 0).toLocaleString()}</td>
@@ -690,9 +785,35 @@ export function buildWebDevOnboardingEmailHtml({ client, project, quotation, adv
           </table>
         </div>
 
+        ${documentsHtml}
+
         <div style="background: #ffffff; border-left: 3px solid #047857; padding: 12px 16px; margin-bottom: 24px; font-size: 12px; color: #334155;">
-          <strong>Payment Terms:</strong> ${paymentTerms}
+          <strong>Payment Terms:</strong> ${autolink(paymentTerms)}
         </div>
+
+        ${
+          remainingNum > 0
+            ? `
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 18px; margin: 24px 0; text-align: center;">
+            <div style="font-weight: 800; font-size: 14px; color: #166534; margin-bottom: 4px;">
+              💳 Instant UPI Payment
+            </div>
+            <div style="font-size: 12px; color: #15803d; margin-bottom: 12px;">
+              Remaining balance of ₹${remaining} can be settled directly via any UPI app
+            </div>
+            ${upiQrUrl ? `<img src="${upiQrUrl}" alt="UPI QR" style="width: 140px; height: 140px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 12px; display: inline-block;" />` : ''}
+            <div>
+              <a href="${upiLink}" style="display: inline-block; background-color: #047857; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none; padding: 10px 22px; border-radius: 8px;">
+                Tap to Pay ₹${remaining} via UPI &rarr;
+              </a>
+            </div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 8px; font-family: monospace;">
+              UPI ID: <strong>${upiId}</strong> (${upiName})
+            </div>
+          </div>
+        `
+            : ''
+        }
 
         <p>Our team is now initiating wireframes and core architecture. We will share development milestones and preview links for your review.</p>
         <p style="margin-top: 24px; margin-bottom: 0;">
@@ -719,6 +840,8 @@ export function buildWebDevOwnerEmailHtml({ client, project, quotation, advanceA
   const advance = Number(advanceAmount !== undefined ? advanceAmount : client.tokenPaid || 0).toLocaleString();
   const remaining = Number(remainingAmount !== undefined ? remainingAmount : client.remainingAmount || 0).toLocaleString();
   const deliveryDate = project?.deadline || client.deliveryDate || 'Scheduled';
+  const documents = client.documents || project?.documents || quotation?.documents || [];
+  const documentsHtml = renderEmailDocuments(documents);
 
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden; color: #1c1917;">
@@ -743,6 +866,9 @@ export function buildWebDevOwnerEmailHtml({ client, project, quotation, advanceA
             <tr><td style="color: #64748b;">Delivery Deadline:</td><td style="font-weight: 700; color: #047857;">${deliveryDate}</td></tr>
           </table>
         </div>
+
+        ${documentsHtml}
+
         <p>The client has been emailed their official quotation and project scope.</p>
       </div>
     </div>
@@ -760,6 +886,19 @@ export function buildWebDevDeliveryEmailHtml({ client, project, remainingAmount 
   const outstandingNum = Number(remainingAmount !== undefined ? remainingAmount : client.remainingAmount || 0);
   const outstanding = outstandingNum.toLocaleString();
   const isFullyPaid = outstandingNum <= 0;
+  const documents = client.documents || project?.documents || [];
+  const documentsHtml = renderEmailDocuments(documents);
+
+  // UPI link if outstanding balance
+  const upiId = getSavedUpiId();
+  const upiName = getSavedUpiName();
+  const upiLink = buildUpiLink({
+    upiId,
+    payeeName: upiName,
+    amount: outstandingNum,
+    transactionNote: `Final Balance - ${projectName}`,
+  });
+  const upiQrUrl = upiLink ? getUpiQrCodeUrl(upiLink, 150) : '';
 
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden; color: #1c1917;">
@@ -783,14 +922,32 @@ export function buildWebDevDeliveryEmailHtml({ client, project, remainingAmount 
           </table>
         </div>
 
+        ${documentsHtml}
+
         ${
           isFullyPaid
             ? `<div style="background: #ecfdf5; border-radius: 8px; padding: 14px 16px; color: #065f46; margin-bottom: 20px;">
                 <strong>Payment Cleared:</strong> All accounts for this project are fully settled. All production credentials, source repositories, and deployment keys have been transferred.
                </div>`
-            : `<p style="color: #b45309; font-weight: 600;">
-                Please arrange clearance of the final balance of <strong>₹${outstanding}</strong> to receive final admin ownership.
-               </p>`
+            : `
+              <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 18px; margin: 24px 0; text-align: center;">
+                <div style="font-weight: 800; font-size: 14px; color: #166534; margin-bottom: 4px;">
+                  💳 Settle Final Balance via UPI
+                </div>
+                <div style="font-size: 12px; color: #15803d; margin-bottom: 12px;">
+                  Please clear the balance of ₹${outstanding} to finalize handover
+                </div>
+                ${upiQrUrl ? `<img src="${upiQrUrl}" alt="UPI QR" style="width: 140px; height: 140px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 12px; display: inline-block;" />` : ''}
+                <div>
+                  <a href="${upiLink}" style="display: inline-block; background-color: #047857; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none; padding: 10px 22px; border-radius: 8px;">
+                    Pay ₹${outstanding} via UPI &rarr;
+                  </a>
+                </div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 8px; font-family: monospace;">
+                  UPI ID: <strong>${upiId}</strong> (${upiName})
+                </div>
+              </div>
+            `
         }
 
         <p>Thank you for partnering with Jugarr Agency. It was a pleasure building your application!</p>
