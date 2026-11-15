@@ -85,7 +85,9 @@ export function Sidebar({ onOpenAddClient }) {
 
       {/* Add Client CTA */}
       <div className="p-3">
-        <button
+        <motion.button
+          whileHover={{ scale: 1.03, y: -1 }}
+          whileTap={{ scale: 0.96 }}
           type="button"
           onClick={onOpenAddClient}
           title="Add Client"
@@ -95,7 +97,7 @@ export function Sidebar({ onOpenAddClient }) {
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           {!isCollapsed && <span>Add Client</span>}
-        </button>
+        </motion.button>
       </div>
 
       {/* Navigation */}
@@ -110,17 +112,28 @@ export function Sidebar({ onOpenAddClient }) {
                 end={item.to === '/'}
                 title={isCollapsed ? item.label : undefined}
                 className={({ isActive }) =>
-                  `flex items-center rounded-2xl text-xs font-semibold transition-all ${
+                  `flex items-center rounded-2xl text-xs font-semibold transition-all relative ${
                     isCollapsed ? 'justify-center w-11 h-11 mx-auto' : 'px-3.5 py-2.5'
                   } ${
                     isActive
-                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
-                      : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-200'
+                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold shadow-xs'
+                      : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100/80 dark:hover:bg-stone-800/80 hover:text-stone-900 dark:hover:text-stone-200'
                   }`
                 }
               >
-                <Icon className={`w-4 h-4 flex-shrink-0 ${!isCollapsed ? 'mr-3' : ''}`} />
-                {!isCollapsed && <span>{item.label}</span>}
+                {({ isActive }) => (
+                  <>
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${!isCollapsed ? 'mr-3' : ''} ${isActive ? 'text-emerald-600' : ''}`} />
+                    {!isCollapsed && <span>{item.label}</span>}
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeSidebarIndicator"
+                        className="absolute left-1 top-2 bottom-2 w-1 bg-emerald-600 rounded-full"
+                        transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                      />
+                    )}
+                  </>
+                )}
               </NavLink>
             );
           })}

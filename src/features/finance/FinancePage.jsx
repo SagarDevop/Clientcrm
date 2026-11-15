@@ -3,6 +3,7 @@ import { useClients } from '../../hooks/useClients.js';
 import { useExpenses } from '../../hooks/useExpenses.js';
 import { AddExpenseModal } from '../../components/forms/AddExpenseModal.jsx';
 import { motion } from 'framer-motion';
+import { AnimatedCounter } from '../../components/common/AnimatedCounter.jsx';
 import {
   ResponsiveContainer,
   BarChart,
@@ -177,7 +178,7 @@ export function FinancePage() {
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-stone-900 dark:text-stone-100">
-            ₹{totalPaymentsReceived.toLocaleString()}
+            <AnimatedCounter value={totalPaymentsReceived} prefix="₹" />
           </div>
           <div className="text-xs text-stone-400 mt-1">Cleared Tokens & Retainers</div>
         </motion.div>
@@ -193,7 +194,7 @@ export function FinancePage() {
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-rose-600">
-            ₹{totalExpenses.toLocaleString()}
+            <AnimatedCounter value={totalExpenses} prefix="₹" />
           </div>
           <div className="text-xs text-stone-400 mt-1">{expenses.length} Logged Expense Items</div>
         </motion.div>
@@ -209,9 +210,9 @@ export function FinancePage() {
             </div>
           </div>
           <div className={`text-2xl font-black font-mono ${netProfit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
-            ₹{netProfit.toLocaleString()}
+            <AnimatedCounter value={netProfit} prefix="₹" />
           </div>
-          <div className="text-xs text-stone-400 mt-1">Margin: <strong className="text-emerald-600">{margin}%</strong></div>
+          <div className="text-xs text-stone-400 mt-1">Margin: <strong className="text-emerald-600"><AnimatedCounter value={margin} suffix="%" /></strong></div>
         </motion.div>
 
         <motion.div
@@ -225,7 +226,7 @@ export function FinancePage() {
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-stone-900 dark:text-stone-100">
-            ₹{mrr.toLocaleString()}
+            <AnimatedCounter value={mrr} prefix="₹" />
           </div>
           <div className="text-xs text-stone-400 mt-1">Guaranteed Retainer Run-Rate</div>
         </motion.div>

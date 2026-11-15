@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner.jsx';
 import { WhatsAppModal } from '../../components/common/WhatsAppModal.jsx';
 import { sendClientCompletionEmails, sendWebDevDeliveryEmails } from '../../utils/email.js';
 import { motion } from 'framer-motion';
+import { AnimatedCounter } from '../../components/common/AnimatedCounter.jsx';
 import {
   ResponsiveContainer,
   BarChart,
@@ -252,7 +253,7 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-stone-900 dark:text-stone-100">
-            ₹{monthlyRecurringRevenue.toLocaleString()}
+            <AnimatedCounter value={monthlyRecurringRevenue} prefix="₹" />
           </div>
           <div className="text-[11px] text-stone-400 mt-2">Active Retainers / Mo</div>
         </motion.div>
@@ -274,7 +275,7 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
-            ₹{totalPaymentsReceived.toLocaleString()}
+            <AnimatedCounter value={totalPaymentsReceived} prefix="₹" />
           </div>
           <div className="text-[11px] text-stone-400 mt-2">Tokens & Payments Received</div>
         </motion.div>
@@ -297,10 +298,10 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-rose-600 dark:text-rose-400">
-            ₹{totalExpenses.toLocaleString()}
+            <AnimatedCounter value={totalExpenses} prefix="₹" />
           </div>
           <div className="text-[11px] text-stone-400 mt-2">
-            ₹{thisMonthExpenses.toLocaleString()} this month
+            <AnimatedCounter value={thisMonthExpenses} prefix="₹" /> this month
           </div>
         </motion.div>
 
@@ -321,9 +322,9 @@ export function DashboardPage() {
             </div>
           </div>
           <div className={`text-2xl font-black font-mono ${netProfit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
-            ₹{netProfit.toLocaleString()}
+            <AnimatedCounter value={netProfit} prefix="₹" />
           </div>
-          <div className="text-[11px] text-stone-400 mt-2">Margin: {profitMargin}%</div>
+          <div className="text-[11px] text-stone-400 mt-2">Margin: <AnimatedCounter value={profitMargin} suffix="%" /></div>
         </motion.div>
 
         {/* 5. Pending Balance Receivables */}
@@ -344,7 +345,7 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-stone-900 dark:text-stone-100">
-            ₹{totalRemainingDue.toLocaleString()}
+            <AnimatedCounter value={totalRemainingDue} prefix="₹" />
           </div>
           <div className="text-[11px] text-stone-400 mt-2">To collect on delivery</div>
         </motion.div>

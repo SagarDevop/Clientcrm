@@ -110,57 +110,85 @@ export function ClientsPage() {
             />
           </div>
 
-          {/* Type Filter Pills */}
-          <div className="flex items-center space-x-1.5 p-1 rounded-2xl bg-stone-100/80 dark:bg-stone-800/80 text-xs">
+          {/* Type Filter Pills with Liquid Slider Motion */}
+          <div className="flex items-center space-x-1 p-1 rounded-2xl bg-stone-100/80 dark:bg-stone-800/80 text-xs">
             <button
               type="button"
               onClick={() => setTypeFilter('all')}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+              className={`relative px-3.5 py-1.5 rounded-xl font-bold transition-all ${
                 typeFilter === 'all'
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-900'
+                  ? 'text-stone-900 dark:text-stone-100'
+                  : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
               }`}
             >
-              All Types
+              {typeFilter === 'all' && (
+                <motion.div
+                  layoutId="activeClientTypePill"
+                  className="absolute inset-0 bg-white dark:bg-stone-900 rounded-xl shadow-xs"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">All Types</span>
             </button>
             <button
               type="button"
               onClick={() => setTypeFilter('web_development')}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+              className={`relative px-3.5 py-1.5 rounded-xl font-bold transition-all ${
                 typeFilter === 'web_development'
-                  ? 'bg-white dark:bg-stone-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-900'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
               }`}
             >
-              Web Dev
+              {typeFilter === 'web_development' && (
+                <motion.div
+                  layoutId="activeClientTypePill"
+                  className="absolute inset-0 bg-white dark:bg-stone-900 rounded-xl shadow-xs"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">Web Dev</span>
             </button>
             <button
               type="button"
               onClick={() => setTypeFilter('content_management')}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+              className={`relative px-3.5 py-1.5 rounded-xl font-bold transition-all ${
                 typeFilter === 'content_management'
-                  ? 'bg-white dark:bg-stone-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-900'
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
               }`}
             >
-              Content Plans
+              {typeFilter === 'content_management' && (
+                <motion.div
+                  layoutId="activeClientTypePill"
+                  className="absolute inset-0 bg-white dark:bg-stone-900 rounded-xl shadow-xs"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">Content Plans</span>
             </button>
           </div>
 
-          {/* Status Filter */}
+          {/* Status Filter with Liquid Motion */}
           <div className="flex items-center space-x-1 p-1 rounded-2xl bg-stone-100/80 dark:bg-stone-800/80 text-xs">
             {['active', 'completed', 'inactive'].map((st) => (
               <button
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-xl font-bold capitalize transition-all ${
+                className={`relative px-3.5 py-1.5 rounded-xl font-bold capitalize transition-all ${
                   statusFilter === st
-                    ? 'bg-white dark:bg-stone-900 text-emerald-700 dark:text-emerald-300 shadow-xs'
-                    : 'text-stone-500 hover:text-stone-900'
+                    ? 'text-emerald-700 dark:text-emerald-300'
+                    : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
                 }`}
               >
-                {st}
+                {statusFilter === st && (
+                  <motion.div
+                    layoutId="activeStatusPill"
+                    className="absolute inset-0 bg-white dark:bg-stone-900 rounded-xl shadow-xs"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{st}</span>
               </button>
             ))}
           </div>
@@ -212,9 +240,10 @@ export function ClientsPage() {
                   hidden: { opacity: 0, y: 15 },
                   visible: { opacity: 1, y: 0 },
                 }}
-                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                whileHover={{ y: -5, transition: { duration: 0.18 } }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => navigate(`/clients/${client.id}`)}
-                className="p-5 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 hover:border-emerald-500 cursor-pointer shadow-sm relative overflow-hidden group flex flex-col justify-between"
+                className="saas-card-glow p-5 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 hover:border-emerald-500/80 cursor-pointer shadow-sm hover:shadow-xl hover:shadow-emerald-500/5 relative overflow-hidden group flex flex-col justify-between transition-all"
               >
                 <div>
                   {/* Top Badges */}
