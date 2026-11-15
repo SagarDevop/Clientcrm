@@ -50,6 +50,7 @@ export function DashboardPage() {
   const [completionSendingId, setCompletionSendingId] = useState(null);
   const [completionFeedback, setCompletionFeedback] = useState(null);
   const [selectedWhatsAppClient, setSelectedWhatsAppClient] = useState(null);
+  const [activeMetricTab, setActiveMetricTab] = useState('income'); // 'income' | 'mrr' | 'inflow' | 'expenses' | 'profit' | 'receivables'
 
   if (isLoading) {
     return <LoadingSpinner text="Starting SaaS Metrics Engine..." size="lg" className="min-h-[50vh]" />;
@@ -165,6 +166,111 @@ export function DashboardPage() {
     amount: monthlyIncomeMap[key],
     isCurrent: key === currentMonthStr,
   }));
+
+  // Calculate month-by-month timeline metrics for interactive charts
+  const monthlyExpensesMap = {};
+  expenses.forEach((e) => {
+    const eDate = e.date || e.createdAt || '';
+    if (eDate.length >= 7) {
+      const monthKey = eDate.slice(0, 7);
+      monthlyExpensesMap[monthKey] = (monthlyExpensesMap[monthKey] || 0) + Number(e.amount || 0);
+    }
+  });
+
+  const allMonthKeysSet = new Set([...Object.keys(monthlyIncomeMap), ...Object.keys(monthlyExpensesMap)]);
+  if (!allMonthKeysSet.has(currentMonthStr)) allMonthKeysSet.add(currentMonthStr);
+  const allSortedMonths = Array.from(allMonthKeysSet).sort();
+
+  // If only 1 month exists, prepend last 2 months for aesthetic continuous graph curve
+  let chartTimelineMonths = [...allSortedMonths];
+  if (chartTimelineMonths.length === 1) {
+    const cur = chartTimelineMonths[0]; // e.g. '2026-11'
+    const [y, m] = cur.split('-').map(Number);
+    const prev1 = new Date(y, m - 2, 1).toISOString().slice(0, 7);
+    const prev2 = new Date(y, m - 3, 1).toISOString().slice(0, 7);
+    chartTimelineMonths = [prev2, prev1, cur];
+  }
+
+  let runningCumulativeIncome = 0;
+  const interactiveChartData = chartTimelineMonths.map((mKey) => {
+    const inc = Number(monthlyIncomeMap[mKey] || 0);
+    const exp = Number(monthlyExpensesMap[mKey] || 0);
+    runningCumulativeIncome += inc;
+    const prof = Math.max(0, inc - exp);
+    const isCur = mKey === currentMonthStr;
+
+    return {
+      monthKey: mKey,
+      name: monthFormatter(mKey),
+      income: isCur && inc === 0 ? totalPaymentsReceived : inc,
+      cumulative: runningCumulativeIncome || totalAllTimeIncome,
+      mrr: monthlyRecurringRevenue,
+      inflow: inc || (isCur ? totalPaymentsReceived : 0),
+      expenses: exp,
+      profit: isCur ? Math.max(0, netProfit) : prof,
+      receivables: isCur ? totalRemainingDue : 0,
+    };
+  });
+
+  // Dynamic configuration based on selected right-side metric
+  const metricConfigs = {
+    income: {
+      title: 'Lifetime All-Time Income Trajectory',
+      dataKey: 'cumulative',
+      color: '#10b981',
+      badge: 'Cumulative Inflow',
+      unit: '₹',
+      stat: totalAllTimeIncome,
+      desc: 'All-time cumulative cash received across client retainers and web development projects.',
+    },
+    mrr: {
+      title: 'Monthly Recurring Revenue (MRR) Run-Rate',
+      dataKey: 'mrr',
+      color: '#0ea5e9',
+      badge: 'Predictable MRR',
+      unit: '₹',
+      stat: monthlyRecurringRevenue,
+      desc: 'Guaranteed contracted monthly recurring subscription revenue renews automatically.',
+    },
+    inflow: {
+      title: 'Cleared Inflow & Active Retainers Collected',
+      dataKey: 'inflow',
+      color: '#059669',
+      badge: 'Cleared Funds',
+      unit: '₹',
+      stat: totalPaymentsReceived,
+      desc: 'Total advances, tokens, and cleared payments collected in current cycle.',
+    },
+    expenses: {
+      title: 'Operating Expenses & Software Tool Costs',
+      dataKey: 'expenses',
+      color: '#f43f5e',
+      badge: 'Business Outflow',
+      unit: '₹',
+      stat: totalExpenses,
+      desc: 'Company operating costs, cloud hosting, APIs, freelancer payouts and marketing.',
+    },
+    profit: {
+      title: 'Net Agency Retained Profit Margin',
+      dataKey: 'profit',
+      color: '#6366f1',
+      badge: `${profitMargin}% Margin`,
+      unit: '₹',
+      stat: netProfit,
+      desc: 'True profit retained after subtracting software tools and company expenses.',
+    },
+    receivables: {
+      title: 'Pending Milestone Receivables',
+      dataKey: 'receivables',
+      color: '#f59e0b',
+      badge: 'Outstanding Due',
+      unit: '₹',
+      stat: totalRemainingDue,
+      desc: 'Remaining balances due to be collected upon project delivery or milestone approvals.',
+    },
+  };
+
+  const selectedMetric = metricConfigs[activeMetricTab] || metricConfigs.income;
 
   // Net Profit & Agency Margin
   const netProfit = totalPaymentsReceived - totalExpenses;
@@ -286,170 +392,355 @@ export function DashboardPage() {
         </motion.div>
       )}
 
-      {/* Compact 6-Column Grid for Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {/* 1. All-Time Total Income */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50/70 to-white dark:from-emerald-950/30 dark:to-stone-900 border border-emerald-500/30 dark:border-emerald-600/30 shadow-xs relative overflow-hidden"
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-              All-Time Income
-            </span>
-            <div className="p-1 rounded-lg bg-emerald-600 text-white">
-              <DollarSign className="w-3 h-3 stroke-[3]" />
+      {/* HERO SECTION: Interactive SaaS Analytics Studio */}
+      {/* Left 65%: Fluid Area & Bar Chart tied to selected metric | Right 35%: Vertical Interactive Metric Deck */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch"
+      >
+        {/* Main Interactive Chart Canvas (8 Columns on desktop) */}
+        <div className="lg:col-span-8 bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200/80 dark:border-stone-800 shadow-sm flex flex-col justify-between space-y-4 relative overflow-hidden">
+          {/* Subtle Ambient Radial Glow */}
+          <div
+            className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-3xl opacity-15 pointer-events-none transition-colors duration-500"
+            style={{ backgroundColor: selectedMetric.color }}
+          />
+
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 dark:border-stone-800 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors duration-300"
+                    style={{
+                      backgroundColor: `${selectedMetric.color}18`,
+                      color: selectedMetric.color,
+                      border: `1px solid ${selectedMetric.color}35`,
+                    }}
+                  >
+                    {selectedMetric.badge}
+                  </span>
+                  <span className="text-[11px] text-stone-400">• Interactive Live Trajectory</span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-black text-stone-900 dark:text-stone-100 mt-1">
+                  {selectedMetric.title}
+                </h2>
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 max-w-xl">
+                  {selectedMetric.desc}
+                </p>
+              </div>
+
+              <div className="text-left sm:text-right flex-shrink-0">
+                <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">
+                  Selected Metric
+                </span>
+                <span
+                  className="text-2xl sm:text-3xl font-black font-mono tracking-tight transition-colors duration-300"
+                  style={{ color: selectedMetric.color }}
+                >
+                  <AnimatedCounter value={selectedMetric.stat} prefix="₹" />
+                </span>
+              </div>
             </div>
           </div>
-          <div className="text-lg font-black font-mono text-emerald-700 dark:text-emerald-300">
-            <AnimatedCounter value={totalAllTimeIncome} prefix="₹" />
-          </div>
-          <div className="text-[10px] text-stone-400 mt-1">Cumulative Total</div>
-        </motion.div>
 
-        {/* 2. Monthly MRR */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          className="p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-xs"
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-              Monthly MRR
-            </span>
-            <div className="p-1 rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-300">
-              <TrendingUp className="w-3 h-3" />
-            </div>
+          {/* Dynamic Recharts Multi-Month Curve */}
+          <div className="h-72 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={interactiveChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="metricGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={selectedMetric.color} stopOpacity={0.4} />
+                    <stop offset="95%" stopColor={selectedMetric.color} stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(150, 150, 150, 0.1)" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: '#78716c', fontWeight: 600 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#78716c', fontWeight: 600 }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(val) => `₹${val >= 1000 ? `${Math.round(val / 1000)}k` : val}`}
+                />
+                <Tooltip
+                  formatter={(val) => [`₹${Number(val).toLocaleString()}`, selectedMetric.badge]}
+                  labelStyle={{ fontWeight: 700, color: '#f8fafc', marginBottom: '4px' }}
+                  contentStyle={{
+                    backgroundColor: '#1c1917',
+                    borderRadius: '16px',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.4)',
+                    padding: '10px 14px',
+                    fontSize: '12px',
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey={selectedMetric.dataKey}
+                  stroke={selectedMetric.color}
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#metricGradient)"
+                  activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2, fill: selectedMetric.color }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-          <div className="text-lg font-black font-mono text-stone-900 dark:text-stone-100">
-            <AnimatedCounter value={monthlyRecurringRevenue} prefix="₹" />
-          </div>
-          <div className="text-[10px] text-stone-400 mt-1">Active Retainers</div>
-        </motion.div>
 
-        {/* 3. Cleared Inflow */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          className="p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-xs"
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-              Cleared Inflow
-            </span>
-            <div className="p-1 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300">
-              <CheckCircle2 className="w-3 h-3" />
-            </div>
+          {/* Month Ledger Strip below chart */}
+          <div className="flex items-center gap-2 overflow-x-auto pt-2 border-t border-stone-100 dark:border-stone-800 custom-scrollbar">
+            {interactiveChartData.map((m) => (
+              <div
+                key={m.monthKey}
+                className="px-3 py-1.5 rounded-xl bg-stone-50/80 dark:bg-stone-800/60 border border-stone-200/60 dark:border-stone-700/60 flex-shrink-0 flex items-center space-x-2 text-xs"
+              >
+                <span className="text-[10px] font-semibold text-stone-400">{m.name}:</span>
+                <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
+                  ₹{Number(m[selectedMetric.dataKey] || 0).toLocaleString()}
+                </span>
+              </div>
+            ))}
           </div>
-          <div className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
-            <AnimatedCounter value={totalPaymentsReceived} prefix="₹" />
-          </div>
-          <div className="text-[10px] text-stone-400 mt-1">Current Active</div>
-        </motion.div>
-
-        {/* 4. Total Expenses */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          onClick={() => setIsAddExpenseOpen(true)}
-          className="p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 hover:border-rose-400 cursor-pointer shadow-xs"
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
-              Expenses
-            </span>
-            <div className="p-1 rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300">
-              <Receipt className="w-3 h-3" />
-            </div>
-          </div>
-          <div className="text-lg font-black font-mono text-rose-600 dark:text-rose-400">
-            <AnimatedCounter value={totalExpenses} prefix="₹" />
-          </div>
-          <div className="text-[10px] text-stone-400 mt-1">
-            <AnimatedCounter value={thisMonthExpenses} prefix="₹" /> mo.
-          </div>
-        </motion.div>
-
-        {/* 5. Net Agency Profit */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          className="p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-xs"
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-              Net Profit
-            </span>
-            <div className="p-1 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
-              <Sparkles className="w-3 h-3" />
-            </div>
-          </div>
-          <div className={`text-lg font-black font-mono ${netProfit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
-            <AnimatedCounter value={netProfit} prefix="₹" />
-          </div>
-          <div className="text-[10px] text-stone-400 mt-1">Margin: <AnimatedCounter value={profitMargin} suffix="%" /></div>
-        </motion.div>
-
-        {/* 6. Pending Receivables */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          onClick={() => navigate('/clients')}
-          className="p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 hover:border-amber-400 cursor-pointer shadow-xs"
-        >
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-              Receivables
-            </span>
-            <div className="p-1 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300">
-              <AlertTriangle className="w-3 h-3" />
-            </div>
-          </div>
-          <div className="text-lg font-black font-mono text-stone-900 dark:text-stone-100">
-            <AnimatedCounter value={totalRemainingDue} prefix="₹" />
-          </div>
-          <div className="text-[10px] text-stone-400 mt-1">To collect</div>
-        </motion.div>
-      </div>
-
-      {/* Compact Month-by-Month Collection Bar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-xs space-y-2.5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-stone-700 dark:text-stone-200 uppercase tracking-wider flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Monthly Income Ledger</span>
-          </span>
-          <span className="text-[11px] font-bold text-stone-400">
-            Lifetime Total: <strong className="text-emerald-600 font-mono">₹{totalAllTimeIncome.toLocaleString()}</strong>
-          </span>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-          {monthlyIncomeList.map((m) => (
-            <div
-              key={m.key}
-              className={`px-3 py-2 rounded-xl border flex-shrink-0 flex items-center space-x-3 transition-all ${
-                m.isCurrent
-                  ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
-                  : 'border-stone-200/80 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40'
-              }`}
-            >
+        {/* Right Vertical Interactive Metric Deck (4 Columns on desktop) */}
+        <div className="lg:col-span-4 flex flex-col justify-between space-y-2.5">
+          {/* Deck Header */}
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Click Card to Highlight Graph</span>
+            </span>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full">
+              LIVE DECK
+            </span>
+          </div>
+
+          {/* Metric 1: All-Time Income */}
+          <motion.div
+            whileHover={{ scale: 1.015, x: 2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setActiveMetricTab('income')}
+            className={`p-3.5 rounded-2xl cursor-pointer transition-all border relative flex items-center justify-between ${
+              activeMetricTab === 'income'
+                ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                : 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-stone-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <div
+                className={`p-2 rounded-xl flex-shrink-0 ${
+                  activeMetricTab === 'income'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
+                }`}
+              >
+                <DollarSign className="w-4 h-4 stroke-[3]" />
+              </div>
               <div>
-                <div className="text-[10px] text-stone-400 font-semibold">{m.label}</div>
-                <div className="text-xs font-black font-mono text-stone-900 dark:text-stone-100">
-                  ₹{Number(m.amount).toLocaleString()}
+                <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                  All-Time Income
+                </div>
+                <div className="text-base font-black font-mono text-stone-900 dark:text-stone-100">
+                  <AnimatedCounter value={totalAllTimeIncome} prefix="₹" />
                 </div>
               </div>
-              {m.isCurrent && (
-                <span className="text-[8px] font-extrabold uppercase bg-emerald-600 text-white px-1.5 py-0.5 rounded-full">
-                  Now
-                </span>
-              )}
             </div>
-          ))}
-        </div>
-      </div>
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+              Cumulative
+            </span>
+          </motion.div>
 
-      {/* SaaS Analytics Chart Bars Section */}
+          {/* Metric 2: Monthly Recurring Revenue (MRR) */}
+          <motion.div
+            whileHover={{ scale: 1.015, x: 2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setActiveMetricTab('mrr')}
+            className={`p-3.5 rounded-2xl cursor-pointer transition-all border relative flex items-center justify-between ${
+              activeMetricTab === 'mrr'
+                ? 'bg-sky-50/80 dark:bg-sky-950/40 border-sky-500 shadow-sm ring-2 ring-sky-500/20'
+                : 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-stone-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <div
+                className={`p-2 rounded-xl flex-shrink-0 ${
+                  activeMetricTab === 'mrr'
+                    ? 'bg-sky-600 text-white shadow-sm'
+                    : 'bg-sky-50 text-sky-600 dark:bg-sky-950/50 dark:text-sky-400'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                  Monthly MRR
+                </div>
+                <div className="text-base font-black font-mono text-stone-900 dark:text-stone-100">
+                  <AnimatedCounter value={monthlyRecurringRevenue} prefix="₹" />
+                </div>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 font-mono">
+              /Month
+            </span>
+          </motion.div>
+
+          {/* Metric 3: Cleared Inflow */}
+          <motion.div
+            whileHover={{ scale: 1.015, x: 2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setActiveMetricTab('inflow')}
+            className={`p-3.5 rounded-2xl cursor-pointer transition-all border relative flex items-center justify-between ${
+              activeMetricTab === 'inflow'
+                ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-600 shadow-sm ring-2 ring-emerald-600/20'
+                : 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-stone-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <div
+                className={`p-2 rounded-xl flex-shrink-0 ${
+                  activeMetricTab === 'inflow'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                  Cleared Inflow
+                </div>
+                <div className="text-base font-black font-mono text-stone-900 dark:text-stone-100">
+                  <AnimatedCounter value={totalPaymentsReceived} prefix="₹" />
+                </div>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 font-mono">
+              Active
+            </span>
+          </motion.div>
+
+          {/* Metric 4: Total Expenses */}
+          <motion.div
+            whileHover={{ scale: 1.015, x: 2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setActiveMetricTab('expenses')}
+            className={`p-3.5 rounded-2xl cursor-pointer transition-all border relative flex items-center justify-between ${
+              activeMetricTab === 'expenses'
+                ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-500 shadow-sm ring-2 ring-rose-500/20'
+                : 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-stone-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <div
+                className={`p-2 rounded-xl flex-shrink-0 ${
+                  activeMetricTab === 'expenses'
+                    ? 'bg-rose-600 text-white shadow-sm'
+                    : 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400'
+                }`}
+              >
+                <Receipt className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                  Operating Expenses
+                </div>
+                <div className="text-base font-black font-mono text-rose-600 dark:text-rose-400">
+                  <AnimatedCounter value={totalExpenses} prefix="₹" />
+                </div>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-rose-600 font-mono">
+              Outflow
+            </span>
+          </motion.div>
+
+          {/* Metric 5: Net Profit */}
+          <motion.div
+            whileHover={{ scale: 1.015, x: 2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setActiveMetricTab('profit')}
+            className={`p-3.5 rounded-2xl cursor-pointer transition-all border relative flex items-center justify-between ${
+              activeMetricTab === 'profit'
+                ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500 shadow-sm ring-2 ring-indigo-500/20'
+                : 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-stone-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <div
+                className={`p-2 rounded-xl flex-shrink-0 ${
+                  activeMetricTab === 'profit'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                  Net Agency Profit
+                </div>
+                <div className={`text-base font-black font-mono ${netProfit >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600'}`}>
+                  <AnimatedCounter value={netProfit} prefix="₹" />
+                </div>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 font-mono">
+              {profitMargin}%
+            </span>
+          </motion.div>
+
+          {/* Metric 6: Pending Receivables */}
+          <motion.div
+            whileHover={{ scale: 1.015, x: 2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setActiveMetricTab('receivables')}
+            className={`p-3.5 rounded-2xl cursor-pointer transition-all border relative flex items-center justify-between ${
+              activeMetricTab === 'receivables'
+                ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500 shadow-sm ring-2 ring-amber-500/20'
+                : 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-stone-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <div
+                className={`p-2 rounded-xl flex-shrink-0 ${
+                  activeMetricTab === 'receivables'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400'
+                }`}
+              >
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                  Pending Receivables
+                </div>
+                <div className="text-base font-black font-mono text-stone-900 dark:text-stone-100">
+                  <AnimatedCounter value={totalRemainingDue} prefix="₹" />
+                </div>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-amber-600 font-mono">
+              Due
+            </span>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Secondary Bottom Section: Financial Growth Bar Chart + Expense Ledger */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.25 }}
+        transition={{ duration: 0.4, delay: 0.15 }}
         className="grid grid-cols-1 lg:grid-cols-3 gap-6"
       >
         {/* Left: Financial Ledger Bar Chart */}
