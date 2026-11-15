@@ -167,6 +167,10 @@ export function DashboardPage() {
     isCurrent: key === currentMonthStr,
   }));
 
+  // Net Profit & Agency Margin (Calculated before interactive chart mapping)
+  const netProfit = totalPaymentsReceived - totalExpenses;
+  const profitMargin = totalPaymentsReceived > 0 ? Math.round((netProfit / totalPaymentsReceived) * 100) : 0;
+
   // Calculate month-by-month timeline metrics for interactive charts
   const monthlyExpensesMap = {};
   expenses.forEach((e) => {
@@ -271,10 +275,6 @@ export function DashboardPage() {
   };
 
   const selectedMetric = metricConfigs[activeMetricTab] || metricConfigs.income;
-
-  // Net Profit & Agency Margin
-  const netProfit = totalPaymentsReceived - totalExpenses;
-  const profitMargin = totalPaymentsReceived > 0 ? Math.round((netProfit / totalPaymentsReceived) * 100) : 0;
 
   // Expiring Soon (Within 7 days or overdue)
   const expiringClients = activeClients.filter((c) => {
