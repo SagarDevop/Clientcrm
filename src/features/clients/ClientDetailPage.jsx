@@ -9,6 +9,7 @@ import {
   sendClientCompletionEmails,
   sendWebDevOnboardingEmails,
   sendWebDevDeliveryEmails,
+  sendPaymentRecordedEmails,
 } from '../../utils/email.js';
 import { ClientFormModal } from '../../components/forms/ClientFormModal.jsx';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner.jsx';
@@ -73,6 +74,7 @@ export function ClientDetailPage() {
   const [payMethod, setPayMethod] = useState('bank_transfer');
   const [payNotes, setPayNotes] = useState('');
   const [payDate, setPayDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [sendPayEmail, setSendPayEmail] = useState(true);
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
   const [payError, setPayError] = useState('');
 
@@ -81,6 +83,7 @@ export function ClientDetailPage() {
   const [nextStartDate, setNextStartDate] = useState('');
   const [nextPlanAmount, setNextPlanAmount] = useState('');
   const [nextTokenPaid, setNextTokenPaid] = useState('0');
+  const [sendNextMonthEmail, setSendNextMonthEmail] = useState(true);
   const [isStartingNextMonth, setIsStartingNextMonth] = useState(false);
 
   // Email Action Feedback State
@@ -186,21 +189,44 @@ export function ClientDetailPage() {
 
     try {
       setIsRecordingPayment(true);
+      let updatedClient = null;
       if (isWebDev) {
-        await recordWebDevPayment({
+        updatedClient = await recordWebDevPayment({
           amount: amt,
           paymentMethod: payMethod,
           paidAt: payDate,
           notes: payNotes,
         });
       } else {
-        await recordPayment({
+        updatedClient = await recordPayment({
           amount: amt,
           paymentMethod: payMethod,
           paidAt: payDate,
           notes: payNotes,
         });
       }
+
+      // If sendPayEmail is checked, dispatch formal payment confirmation email
+      if (sendPayEmail && client.email) {
+        try {
+          const newRemaining = Math.max(0, remainingAmount - amt);
+          await sendPaymentRecordedEmails({
+            client: { ...client, ...(updatedClient || {}) },
+            paymentAmount: amt,
+            paymentMethod: payMethod,
+            paymentDate: payDate,
+            notes: payNotes,
+            remainingAmount: newRemaining,
+          });
+          setEmailActionFeedback({
+            type: 'success',
+            text: `Payment of ₹${amt.toLocaleString()} recorded & confirmation email sent to ${client.email}`,
+          });
+        } catch (emailErr) {
+          console.warn('Payment receipt email dispatch notice:', emailErr);
+        }
+      }
+
       await loadPaymentsAndQuotation();
       setIsRecordPaymentOpen(false);
       setPayAmount('');
@@ -217,11 +243,31 @@ export function ClientDetailPage() {
     e.preventDefault();
     try {
       setIsStartingNextMonth(true);
-      await startNextMonth({
+      const planAmt = Number(nextPlanAmount || planAmount);
+      const tokAmt = Number(nextTokenPaid || 0);
+      const updatedClient = await startNextMonth({
         startDate: nextStartDate || client.completionDate,
-        monthlyPlanAmount: Number(nextPlanAmount || planAmount),
-        tokenPaid: Number(nextTokenPaid || 0),
+        monthlyPlanAmount: planAmt,
+        tokenPaid: tokAmt,
       });
+
+      // Dispatch renewal email to client if requested
+      if (sendNextMonthEmail && client.email) {
+        try {
+          await sendClientOnboardingEmails({
+            client: updatedClient || { ...client, startDate: nextStartDate, monthlyPlanAmount: planAmt, tokenPaid: tokAmt },
+            tokenAmount: tokAmt,
+            remainingAmount: Math.max(0, planAmt - tokAmt),
+          });
+          setEmailActionFeedback({
+            type: 'success',
+            text: `Next month started successfully & renewal confirmation email dispatched to ${client.email}`,
+          });
+        } catch (emailErr) {
+          console.warn('Next month renewal email dispatch notice:', emailErr);
+        }
+      }
+
       await loadPaymentsAndQuotation();
       setIsStartNextMonthOpen(false);
     } catch (err) {
@@ -1299,6 +1345,29 @@ export function ClientDetailPage() {
             />
           </div>
 
+          {/* Email dispatch toggle */}
+          {client.email && (
+            <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <Mail className="w-4 h-4 text-emerald-600" />
+                <div>
+                  <span className="text-xs font-bold text-stone-900 dark:text-stone-100 block">
+                    Send Payment Email to Client
+                  </span>
+                  <span className="text-[11px] text-stone-500">
+                    Dispatches formal payment receipt to {client.email}
+                  </span>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={sendPayEmail}
+                onChange={(e) => setSendPayEmail(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded border-stone-300 focus:ring-emerald-500 cursor-pointer"
+              />
+            </div>
+          )}
+
           <div className="flex items-center justify-end space-x-2 pt-3 border-t border-stone-100 dark:border-stone-800">
             <button
               type="button"
@@ -1370,6 +1439,29 @@ export function ClientDetailPage() {
               className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 font-mono"
             />
           </div>
+
+          {/* Email dispatch toggle for Next Month */}
+          {client.email && (
+            <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <Mail className="w-4 h-4 text-emerald-600" />
+                <div>
+                  <span className="text-xs font-bold text-stone-900 dark:text-stone-100 block">
+                    Send Renewal Confirmation Email
+                  </span>
+                  <span className="text-[11px] text-stone-500">
+                    Dispatches new month cycle confirmation to {client.email}
+                  </span>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={sendNextMonthEmail}
+                onChange={(e) => setSendNextMonthEmail(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded border-stone-300 focus:ring-emerald-500 cursor-pointer"
+              />
+            </div>
+          )}
 
           <div className="flex items-center justify-end space-x-2 pt-3 border-t border-stone-100 dark:border-stone-800">
             <button

@@ -262,14 +262,26 @@ export function buildOnboardingEmailHtml({ client, tokenAmount, remainingAmount 
   const remaining = Number(remainingAmount !== undefined ? remainingAmount : client.remainingAmount || 0).toLocaleString();
   const startDate = client.startDate || 'Today';
   const completionDate = client.completionDate || '1 Month';
-  const packageName = client.packageDescription?.slice(0, 40) || 'Monthly Service Package';
+
+  // Use clean subscription title / category name if present, else fallback to clean truncated title
+  let packageName = client.subscriptionTitle || client.servicePackageName || '';
+  if (!packageName) {
+    if (client.packageDescription) {
+      const firstLine = client.packageDescription.split('\n')[0].replace(/^[•\-\*]\s*/, '').trim();
+      packageName = firstLine.length > 50 ? firstLine.slice(0, 48) + '...' : firstLine;
+    } else {
+      packageName = 'Monthly Retainer Plan';
+    }
+  }
+
+  const emailHeading = client.emailHeading || 'Welcome Onboard!';
   const descriptionHtml = formatParagraphs(client.packageDescription || 'Custom monthly agency services.');
 
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden; color: #1c1917;">
       <div style="background-color: #059669; padding: 24px 20px; text-align: center;">
         <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">
-          Welcome Onboard!
+          ${emailHeading}
         </h1>
         <div style="color: #d1fae5; font-size: 13px; margin-top: 4px;">Jugarr Agency • Service Confirmation</div>
       </div>
@@ -286,8 +298,13 @@ export function buildOnboardingEmailHtml({ client, tokenAmount, remainingAmount 
           <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
             <tr>
               <td style="padding: 6px 0; color: #64748b;">Service Package:</td>
-              <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #0f172a;">${packageName}</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 700; color: #0f172a;">${packageName}</td>
             </tr>
+            ${client.category && client.category !== 'both' ? `
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Service Category:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #059669;">${client.category}</td>
+            </tr>` : ''}
             <tr>
               <td style="padding: 6px 0; color: #64748b;">Monthly Plan Amount:</td>
               <td style="padding: 6px 0; text-align: right; font-weight: 700; color: #0f172a;">₹${planAmount}</td>
@@ -501,6 +518,162 @@ export function buildCompletionOwnerEmailHtml({ client, remainingAmount }) {
 }
 
 /**
+ * Payment Receipt / Confirmation Email Generator
+ */
+export function buildPaymentReceiptEmailHtml({ client, paymentAmount, paymentMethod, paymentDate, notes, remainingAmount, isNextMonth = false }) {
+  const clientName = client.name || 'Valued Client';
+  const businessName = client.businessName || 'your business';
+  const amountStr = Number(paymentAmount || 0).toLocaleString();
+  const outstandingNum = Number(remainingAmount !== undefined ? remainingAmount : client.remainingAmount || 0);
+  const outstanding = outstandingNum.toLocaleString();
+  const isFullyPaid = outstandingNum <= 0;
+  const methodLabel = {
+    bank_transfer: 'Bank Transfer / NEFT',
+    upi: 'UPI (GPay / PhonePe / Paytm)',
+    cash: 'Cash',
+    card: 'Card / Gateway',
+    other: 'Online / Other',
+  }[paymentMethod] || paymentMethod || 'Online Transfer';
+
+  const dateStr = paymentDate || new Date().toISOString().slice(0, 10);
+  const packageName = client.subscriptionTitle || client.servicePackageName || 'Monthly Service Retainer';
+
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 16px; overflow: hidden; color: #1c1917;">
+      <div style="background-color: #059669; padding: 24px 20px; text-align: center;">
+        <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">
+          ✓ Payment Received & Recorded
+        </h1>
+        <div style="color: #d1fae5; font-size: 13px; margin-top: 4px;">Jugarr Agency • Official Payment Confirmation</div>
+      </div>
+      
+      <div style="padding: 32px 28px; font-size: 14px; line-height: 1.6;">
+        <p style="margin-top: 0; font-size: 16px;">Hi <strong>${clientName}</strong>,</p>
+        <p>Thank you! We have successfully received and recorded your payment of <strong>₹${amountStr}</strong> for <strong>${businessName}</strong>.</p>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+          <h3 style="margin: 0 0 14px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569;">
+            Receipt Summary
+          </h3>
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Plan / Package:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 700; color: #0f172a;">${packageName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Payment Date:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #0f172a;">${dateStr}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Payment Mode:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #0f172a;">${methodLabel}</td>
+            </tr>
+            ${notes ? `
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Ref / Note:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 500; color: #059669;">${notes}</td>
+            </tr>` : ''}
+            <tr style="border-top: 1px dashed #cbd5e1;">
+              <td style="padding: 8px 0; font-weight: 700; color: #334155;">Amount Paid:</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 800; font-size: 16px; color: #059669;">₹${amountStr}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: 700; color: #334155;">Remaining Due:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: 800; font-size: 14px; color: ${isFullyPaid ? '#059669' : '#dc2626'};">
+                ₹${outstanding} ${isFullyPaid ? '(Fully Settled)' : ''}
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        ${isFullyPaid ? `
+          <div style="background: #ecfdf5; border-radius: 8px; padding: 14px 16px; color: #065f46; margin-bottom: 20px;">
+            <strong>✓ Account Fully Settled:</strong> All outstanding dues for this service cycle are cleared. Thank you for your business!
+          </div>
+        ` : ''}
+
+        <p>If you have any questions or require an updated invoice, please reach out directly.</p>
+        <p style="margin-top: 24px; margin-bottom: 0;">
+          Regards,<br>
+          <strong>Jugarr Agency</strong>
+        </p>
+      </div>
+
+      <div style="padding: 16px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; background: #fafafa;">
+        Sent via BizCRM Client Management System
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Dispatch Payment Confirmation Email to Client & Owner
+ */
+export async function sendPaymentRecordedEmails({ client, paymentAmount, paymentMethod, paymentDate, notes, remainingAmount, isNextMonth = false, database = db }) {
+  const results = { clientSent: false, ownerSent: false, errors: [] };
+  const ownerEmail = 'warshasingh21@gmail.com';
+
+  if (client.email) {
+    try {
+      const html = buildPaymentReceiptEmailHtml({
+        client,
+        paymentAmount,
+        paymentMethod,
+        paymentDate,
+        notes,
+        remainingAmount,
+        isNextMonth,
+      });
+
+      await dispatchEmail({
+        toEmail: client.email,
+        toName: client.name,
+        subject: `Payment Received (₹${Number(paymentAmount).toLocaleString()}) — Jugarr Agency`,
+        htmlContent: html,
+      });
+      results.clientSent = true;
+
+      if (database?.email_jobs) {
+        await database.email_jobs.put({
+          id: generateId(),
+          recipientEmail: client.email,
+          templateType: 'payment_received_client',
+          entityType: 'payment',
+          entityId: client.id,
+          status: 'sent',
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      results.errors.push(`Client payment email: ${err.message}`);
+    }
+  }
+
+  // Owner Alert
+  if (ownerEmail) {
+    try {
+      await dispatchEmail({
+        toEmail: ownerEmail,
+        toName: 'Sagar (Agency Owner)',
+        subject: `💰 Payment Recorded: ₹${Number(paymentAmount).toLocaleString()} from ${client.name} (${client.businessName || 'Business'})`,
+        htmlContent: `<div style="font-family: sans-serif; padding: 20px;">
+          <h3>Payment Recorded</h3>
+          <p>Client: <strong>${client.name}</strong> (${client.businessName || ''})</p>
+          <p>Amount: <strong>₹${Number(paymentAmount).toLocaleString()}</strong></p>
+          <p>Payment Date: ${paymentDate || new Date().toISOString().slice(0, 10)}</p>
+          <p>Remaining Due: <strong>₹${Number(remainingAmount || 0).toLocaleString()}</strong></p>
+        </div>`,
+      });
+      results.ownerSent = true;
+    } catch (err) {
+      results.errors.push(`Owner payment alert: ${err.message}`);
+    }
+  }
+
+  return results;
+}
+
+/**
  * Dispatch Onboarding Emails (Client + Owner) with logging and safe failure handling
  */
 export async function sendClientOnboardingEmails({ client, tokenAmount, remainingAmount, database = db }) {
@@ -514,10 +687,11 @@ export async function sendClientOnboardingEmails({ client, tokenAmount, remainin
   if (client.email) {
     try {
       const html = buildOnboardingEmailHtml({ client, tokenAmount, remainingAmount });
+      const emailSubject = client.emailSubject || `Welcome Onboard — Your Monthly Service Plan`;
       await dispatchEmail({
         toEmail: client.email,
         toName: client.name,
-        subject: `Welcome Onboard — Your Monthly Service Plan`,
+        subject: emailSubject,
         htmlContent: html,
       });
       results.clientSent = true;

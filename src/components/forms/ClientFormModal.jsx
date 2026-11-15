@@ -45,6 +45,10 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
 
   // Content Management specific fields
   const [contentData, setContentData] = useState({
+    subscriptionTitle: 'Monthly Growth Retainer',
+    category: 'Social Media Management',
+    emailHeading: 'Welcome Onboard!',
+    emailSubject: 'Welcome Onboard — Your Monthly Service Plan',
     startDate: todayStr,
     monthlyPlanAmount: '',
     tokenPaid: '',
@@ -124,6 +128,10 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
         });
       } else {
         setContentData({
+          subscriptionTitle: initialData.subscriptionTitle || 'Monthly Growth Retainer',
+          category: initialData.category || 'Social Media Management',
+          emailHeading: initialData.emailHeading || 'Welcome Onboard!',
+          emailSubject: initialData.emailSubject || 'Welcome Onboard — Your Monthly Service Plan',
           startDate: initialData.startDate || todayStr,
           monthlyPlanAmount: initialData.monthlyPlanAmount || '',
           tokenPaid: initialData.tokenPaid || '',
@@ -258,6 +266,10 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
         };
 
         if (clientType === 'content_management') {
+          updates.subscriptionTitle = contentData.subscriptionTitle;
+          updates.category = contentData.category;
+          updates.emailHeading = contentData.emailHeading;
+          updates.emailSubject = contentData.emailSubject;
           updates.packageDescription = contentData.packageDescription;
         } else {
           updates.projectName = webDevData.projectName || `${formData.businessName} Website`;
@@ -307,6 +319,10 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
           billingAnchorDay: anchorDay,
           monthlyPlanAmount: planNum,
           tokenPaid: tokenNum,
+          subscriptionTitle: contentData.subscriptionTitle,
+          category: contentData.category,
+          emailHeading: contentData.emailHeading,
+          emailSubject: contentData.emailSubject,
           packageDescription: contentData.packageDescription,
           notes: formData.notes,
           status: 'active',
@@ -554,6 +570,70 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
         {/* ============================================================== */}
         {clientType === 'content_management' && (
           <>
+            {/* Custom Subscription Title, Category & Email Heading Controls */}
+            <div className="pt-2 border-t border-stone-100 dark:border-stone-800 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Subscription / Plan Title <span className="text-stone-400 font-normal">(Shows on Email & Receipt)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 25 Reels Growth Plan / Starter Retainer"
+                    value={contentData.subscriptionTitle}
+                    onChange={(e) => setContentData({ ...contentData, subscriptionTitle: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 focus:ring-2 focus:ring-emerald-500 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Service Category
+                  </label>
+                  <select
+                    value={contentData.category}
+                    onChange={(e) => setContentData({ ...contentData, category: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="Social Media Management">Social Media Management (Reels/Posts)</option>
+                    <option value="Video Editing & Content">Video Editing & Short-form Content</option>
+                    <option value="Performance Marketing (Meta/Google)">Performance Marketing (Meta/Google Ads)</option>
+                    <option value="SEO & Organic Growth">SEO & Organic Growth</option>
+                    <option value="Custom Brand Retainer">Custom Brand Retainer</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Email Heading & Subject Customizer */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200/80 dark:border-stone-700">
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider mb-1">
+                    Email Banner Heading
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Welcome Onboard!"
+                    value={contentData.emailHeading}
+                    onChange={(e) => setContentData({ ...contentData, emailHeading: e.target.value })}
+                    className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-200 dark:border-stone-600 bg-white dark:bg-stone-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider mb-1">
+                    Email Subject Line
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Welcome Onboard — Your Monthly Service Plan"
+                    value={contentData.emailSubject}
+                    onChange={(e) => setContentData({ ...contentData, emailSubject: e.target.value })}
+                    className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-200 dark:border-stone-600 bg-white dark:bg-stone-900"
+                  />
+                </div>
+              </div>
+            </div>
+
             {!initialData && (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-stone-100 dark:border-stone-800">

@@ -289,6 +289,10 @@ export const clientsRepo = {
       billingAnchorDay,
 
       // Details
+      subscriptionTitle: (data.subscriptionTitle || '').trim(),
+      category: data.category || 'both',
+      emailHeading: (data.emailHeading || '').trim(),
+      emailSubject: (data.emailSubject || '').trim(),
       packageDescription: (data.packageDescription || '').trim(),
       notes: (data.notes || '').trim(),
 
