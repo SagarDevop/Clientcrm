@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClients } from '../../hooks/useClients.js';
 import { useExpenses } from '../../hooks/useExpenses.js';
+import { usePayments } from '../../hooks/usePayments.js';
 import { ClientFormModal } from '../../components/forms/ClientFormModal.jsx';
 import { AddExpenseModal } from '../../components/forms/AddExpenseModal.jsx';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner.jsx';
@@ -43,6 +44,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const { clients, isLoading } = useClients();
   const { expenses, addExpense, deleteExpense } = useExpenses();
+  const { payments = [] } = usePayments();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [completionSendingId, setCompletionSendingId] = useState(null);
@@ -111,6 +113,58 @@ export function DashboardPage() {
   const thisMonthExpenses = expenses
     .filter((e) => (e.date || '').startsWith(currentMonthStr))
     .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+  // Calculate all-time total historical income from payments table + all clients
+  const totalAllTimeIncome = Math.max(
+    totalPaymentsReceived,
+    payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+  );
+
+  // Month-by-month Income aggregation from Payments ledger
+  const monthlyIncomeMap = {};
+  payments.forEach((p) => {
+    const pDate = p.paidAt || p.createdAt || '';
+    if (pDate.length >= 7) {
+      const monthKey = pDate.slice(0, 7); // e.g. '2026-09', '2026-10', '2026-11'
+      monthlyIncomeMap[monthKey] = (monthlyIncomeMap[monthKey] || 0) + Number(p.amount || 0);
+    }
+  });
+
+  // Also include active client records start months if not in payments
+  clients.forEach((c) => {
+    const sDate = c.startDate || c.createdAt || '';
+    const token = Number(c.tokenPaid || c.advancePaid || 0);
+    if (sDate.length >= 7 && token > 0) {
+      const monthKey = sDate.slice(0, 7);
+      if (!monthlyIncomeMap[monthKey]) {
+        monthlyIncomeMap[monthKey] = token;
+      }
+    }
+  });
+
+  // Ensure current month has at least totalPaymentsReceived
+  monthlyIncomeMap[currentMonthStr] = Math.max(
+    monthlyIncomeMap[currentMonthStr] || 0,
+    totalPaymentsReceived
+  );
+
+  const sortedMonthKeys = Object.keys(monthlyIncomeMap).sort();
+  const monthFormatter = (key) => {
+    try {
+      const [y, m] = key.split('-');
+      const d = new Date(Number(y), Number(m) - 1, 1);
+      return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    } catch {
+      return key;
+    }
+  };
+
+  const monthlyIncomeList = sortedMonthKeys.map((key) => ({
+    key,
+    label: monthFormatter(key),
+    amount: monthlyIncomeMap[key],
+    isCurrent: key === currentMonthStr,
+  }));
 
   // Net Profit & Agency Margin
   const netProfit = totalPaymentsReceived - totalExpenses;
@@ -236,7 +290,33 @@ export function DashboardPage() {
 
       {/* 5 Growth & Financial Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* 1. Monthly Recurring Revenue (MRR) */}
+        {/* 1. All-Time Total Income Board (Lifetime Income) */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.03 }}
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          className="p-5 rounded-3xl bg-gradient-to-br from-emerald-500/10 via-white to-white dark:from-emerald-950/40 dark:via-stone-900 dark:to-stone-900 border-2 border-emerald-500/30 dark:border-emerald-600/30 shadow-md shadow-emerald-500/5 relative overflow-hidden group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>All-Time Income</span>
+            </span>
+            <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-sm shadow-emerald-600/30">
+              <DollarSign className="w-4 h-4 stroke-[3]" />
+            </div>
+          </div>
+          <div className="text-2xl font-black font-mono text-emerald-700 dark:text-emerald-400">
+            <AnimatedCounter value={totalAllTimeIncome} prefix="₹" />
+          </div>
+          <div className="text-[11px] font-semibold text-emerald-600/80 dark:text-emerald-400/80 mt-2 flex items-center justify-between">
+            <span>Cumulative Inflow</span>
+            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded-md font-bold">TOTAL</span>
+          </div>
+        </motion.div>
+
+        {/* 2. Monthly Recurring Revenue (MRR) */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -350,6 +430,66 @@ export function DashboardPage() {
           <div className="text-[11px] text-stone-400 mt-2">To collect on delivery</div>
         </motion.div>
       </div>
+
+      {/* NEW: Lifetime All-Time Monthly Income Board & Month-by-Month Breakdown */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.2 }}
+        className="p-6 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-sm space-y-4"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                Income Summary
+              </span>
+              <span className="text-xs text-stone-400">• All Months Cumulative</span>
+            </div>
+            <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 mt-1 flex items-center gap-2">
+              <span>Lifetime Income & Month-wise Collection Board</span>
+            </h2>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              Complete historical record of all client retainer tokens, web development advances, and milestone payments.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 bg-stone-50 dark:bg-stone-800/60 p-3 rounded-2xl border border-stone-200/60 dark:border-stone-700">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-stone-400 block">Total Lifetime Inflow</span>
+              <span className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                <AnimatedCounter value={totalAllTimeIncome} prefix="₹" />
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Month by month pill grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 pt-2">
+          {monthlyIncomeList.map((m) => (
+            <div
+              key={m.key}
+              className={`p-3.5 rounded-2xl border transition-all ${
+                m.isCurrent
+                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-100 shadow-xs'
+                  : 'border-stone-200/80 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-bold text-stone-600 dark:text-stone-400">{m.label}</span>
+                {m.isCurrent && (
+                  <span className="text-[9px] font-extrabold uppercase bg-emerald-600 text-white px-1.5 py-0.5 rounded-full">
+                    Current
+                  </span>
+                )}
+              </div>
+              <div className="text-base font-black font-mono text-stone-900 dark:text-stone-100">
+                <AnimatedCounter value={m.amount} prefix="₹" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
 
       {/* SaaS Analytics Chart Bars Section */}
       <motion.div
