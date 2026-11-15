@@ -6,6 +6,7 @@ import { checkAndApplyMigrations } from '../db/migrations.js';
 import { LoadingSpinner } from '../components/common/LoadingSpinner.jsx';
 import { PinLockScreen } from '../components/common/PinLockScreen.jsx';
 import { isPinProtected, isSessionUnlocked, requestPersistentStorage } from '../utils/security.js';
+import { AuthProvider } from '../features/auth/AuthContext.jsx';
 
 export function App() {
   const [isReady, setIsReady] = useState(false);
@@ -16,7 +17,6 @@ export function App() {
       try {
         await ensureDbSeeded(db);
         await checkAndApplyMigrations(db);
-        // Request persistent storage to guard against silent IndexedDB eviction
         await requestPersistentStorage();
 
         // Check PIN protection
@@ -35,18 +35,17 @@ export function App() {
   if (!isReady) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-stone-50 dark:bg-stone-950">
-        <LoadingSpinner text="Starting BizCRM Local Database..." size="lg" />
+        <LoadingSpinner text="Starting BizCRM SaaS Platform..." size="lg" />
       </div>
     );
   }
 
   return (
-    <>
+    <AuthProvider>
       {isLocked && <PinLockScreen onUnlock={() => setIsLocked(false)} />}
       <RouterProvider router={router} />
-    </>
+    </AuthProvider>
   );
 }
 
 export default App;
-

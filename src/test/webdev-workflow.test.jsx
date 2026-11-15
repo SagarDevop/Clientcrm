@@ -372,10 +372,6 @@ describe('Web Development Client Workflow & Quotation Engine', () => {
       // Verify autolink in description and payment terms
       expect(html).toContain('href="https://preview.kapoor.com"');
       expect(html).toContain('href="https://kapoor.com/terms"');
-
-      // Verify UPI payment link
-      expect(html).toContain('upi://pay?');
-      expect(html).toContain('Tap to Pay ₹40,000 via UPI');
     });
 
     it('generates owner notification and delivery completion emails with clickable links', () => {

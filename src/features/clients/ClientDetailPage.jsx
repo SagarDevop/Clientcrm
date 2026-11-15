@@ -58,7 +58,10 @@ export function ClientDetailPage() {
     startNextMonth,
     archiveClient,
     restoreClient,
+    deleteClient,
   } = useClient(id);
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [quotationRecord, setQuotationRecord] = useState(null);
@@ -437,6 +440,15 @@ export function ClientDetailPage() {
           >
             <Edit2 className="w-3.5 h-3.5" />
             <span>Edit Details</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors"
+            title="Delete This Client"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -1526,6 +1538,44 @@ export function ClientDetailPage() {
         client={client}
         defaultTemplate={whatsAppTemplate}
       />
+
+      {/* Delete Single Client Confirmation Modal */}
+      {isDeleteDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-800 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center text-rose-600 mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center">
+              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                Permanently Delete "{client.name}"?
+              </h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                This will delete the client profile, their project milestones, quotation records, and recorded payments from both local cache and cloud database.
+              </p>
+            </div>
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteDialogOpen(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await deleteClient();
+                  navigate('/clients');
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 shadow-md transition-colors"
+              >
+                Yes, Delete Client
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

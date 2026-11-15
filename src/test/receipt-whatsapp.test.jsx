@@ -140,7 +140,7 @@ describe('1-Click Receipt / Invoice & 3-in-1 WhatsApp Features', () => {
       expect(qrUrl).toContain('size=180x180');
     });
 
-    it('renders UPI QR Code box and 1-tap payment button in ClientReceiptModal when balance is due', () => {
+    it('does not render UPI QR Code in ClientReceiptModal', () => {
       render(
         <ClientReceiptModal
           isOpen={true}
@@ -150,17 +150,14 @@ describe('1-Click Receipt / Invoice & 3-in-1 WhatsApp Features', () => {
         />
       );
 
-      expect(screen.getByText(/Scan to Pay ₹10,000 via Any UPI App/i)).toBeInTheDocument();
-      expect(screen.getByText(/warshasingh21@okaxis/i)).toBeInTheDocument();
-      expect(screen.getByAltText('UPI Payment QR Code')).toBeInTheDocument();
-      expect(screen.getByText('Tap to Pay via UPI App')).toBeInTheDocument();
+      expect(screen.queryByText(/Scan to Pay via Any UPI App/i)).not.toBeInTheDocument();
+      expect(screen.queryByAltText('UPI Payment QR Code')).not.toBeInTheDocument();
     });
 
-    it('includes UPI payment instructions and 1-tap link in WhatsApp balance reminder', () => {
+    it('generates clean WhatsApp balance reminder without raw UPI deep links', () => {
       const balanceMsg = getClientWhatsAppMessage('balance', mockClient);
-      expect(balanceMsg).toContain('Pay Instantly via UPI (GPay / PhonePe / Paytm)');
-      expect(balanceMsg).toContain('warshasingh21@okaxis');
-      expect(balanceMsg).toContain('upi://pay?');
+      expect(balanceMsg).toContain('Payment Details:');
+      expect(balanceMsg).not.toContain('upi://pay?');
     });
   });
 });

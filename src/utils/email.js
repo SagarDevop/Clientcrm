@@ -791,30 +791,6 @@ export function buildWebDevOnboardingEmailHtml({ client, project, quotation, adv
           <strong>Payment Terms:</strong> ${autolink(paymentTerms)}
         </div>
 
-        ${
-          remainingNum > 0
-            ? `
-          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 18px; margin: 24px 0; text-align: center;">
-            <div style="font-weight: 800; font-size: 14px; color: #166534; margin-bottom: 4px;">
-              💳 Instant UPI Payment
-            </div>
-            <div style="font-size: 12px; color: #15803d; margin-bottom: 12px;">
-              Remaining balance of ₹${remaining} can be settled directly via any UPI app
-            </div>
-            ${upiQrUrl ? `<img src="${upiQrUrl}" alt="UPI QR" style="width: 140px; height: 140px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 12px; display: inline-block;" />` : ''}
-            <div>
-              <a href="${upiLink}" style="display: inline-block; background-color: #047857; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none; padding: 10px 22px; border-radius: 8px;">
-                Tap to Pay ₹${remaining} via UPI &rarr;
-              </a>
-            </div>
-            <div style="font-size: 11px; color: #64748b; margin-top: 8px; font-family: monospace;">
-              UPI ID: <strong>${upiId}</strong> (${upiName})
-            </div>
-          </div>
-        `
-            : ''
-        }
-
         <p>Our team is now initiating wireframes and core architecture. We will share development milestones and preview links for your review.</p>
         <p style="margin-top: 24px; margin-bottom: 0;">
           Best regards,<br>

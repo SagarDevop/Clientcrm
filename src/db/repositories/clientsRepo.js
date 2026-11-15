@@ -200,16 +200,41 @@ export const clientsRepo = {
     return database.clients.get(id);
   },
 
-  async delete(id, database = db) {
-    const check = await this.checkLinkedRecords(id, database);
-    if (!check.canDelete) {
-      const summary = Object.entries(check.details)
-        .map(([key, count]) => `${count} ${key}`)
-        .join(', ');
-      throw new Error(
-        `Cannot delete client because it has linked records (${summary}). Archive the client instead to preserve historical records.`
-      );
+  async delete(id, database = db, options = {}) {
+    if (!id || !database.clients) return;
+
+    if (!options.force) {
+      const check = await this.checkLinkedRecords(id, database);
+      if (!check.canDelete) {
+        const summary = Object.entries(check.details)
+          .map(([key, count]) => `${count} ${key}`)
+          .join(', ');
+        throw new Error(
+          `Cannot delete client because it has linked records (${summary}). Archive the client instead to preserve historical records.`
+        );
+      }
     }
+
+    // Cascade delete any associated records in IndexedDB when force deleting single client
+    if (database.projects) {
+      await database.projects.where('clientId').equals(id).delete().catch(() => {});
+    }
+    if (database.payments) {
+      await database.payments.where('clientId').equals(id).delete().catch(() => {});
+    }
+    if (database.quotations) {
+      await database.quotations.where('clientId').equals(id).delete().catch(() => {});
+    }
+    if (database.tasks) {
+      await database.tasks.where('clientId').equals(id).delete().catch(() => {});
+    }
+    if (database.interactions) {
+      await database.interactions.where('clientId').equals(id).delete().catch(() => {});
+    }
+    if (database.invoices) {
+      await database.invoices.where('clientId').equals(id).delete().catch(() => {});
+    }
+
     return database.clients.delete(id);
   },
 

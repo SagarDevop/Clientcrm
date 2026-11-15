@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { clientsRepo } from '../db/repositories/clientsRepo.js';
+import { saasApi, getAuthToken } from '../services/saasApi.js';
 
 export function useClients(filters = {}) {
   const clients = useLiveQuery(
@@ -7,6 +8,17 @@ export function useClients(filters = {}) {
     [filters.status, filters.serviceId, filters.search],
     []
   );
+
+  const deleteClient = async (id, force = true) => {
+    await clientsRepo.delete(id, db, { force });
+    if (getAuthToken()) {
+      try {
+        await saasApi.delete('clients', id);
+      } catch (err) {
+        console.warn('SaaS cloud client deletion notice:', err.message);
+      }
+    }
+  };
 
   return {
     clients: clients || [],
@@ -17,7 +29,7 @@ export function useClients(filters = {}) {
     updateClient: (id, updates) => clientsRepo.update(id, updates),
     archiveClient: (id) => clientsRepo.archive(id),
     restoreClient: (id) => clientsRepo.restore(id),
-    deleteClient: (id) => clientsRepo.delete(id),
+    deleteClient,
     checkDuplicates: (fields) => clientsRepo.findDuplicates(fields),
   };
 }
@@ -40,6 +52,14 @@ export function useClient(id) {
     startNextMonth: (nextMonthData) => clientsRepo.startNextMonth(id, nextMonthData),
     archiveClient: () => clientsRepo.archive(id),
     restoreClient: () => clientsRepo.restore(id),
+    deleteClient: async (force = true) => {
+      await clientsRepo.delete(id, db, { force });
+      if (getAuthToken()) {
+        try {
+          await saasApi.delete('clients', id);
+        } catch (err) {}
+      }
+    },
   };
 }
 

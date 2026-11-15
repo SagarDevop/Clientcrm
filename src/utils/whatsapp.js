@@ -28,12 +28,8 @@ export const WHATSAPP_TEMPLATES = {
   onboardingWelcome: ({ clientName, businessName, packageName, startDate, completionDate, planAmount, tokenPaid, remainingAmount, currency = '₹' }) =>
     `Hello ${clientName || 'there'}, welcome onboard! 🚀\n\nWe are excited to start working with *${businessName || 'your business'}*. Your service plan has officially started.\n\n📋 *Plan Details:*\n• Service: *${packageName || 'Monthly Service Package'}*\n• Monthly Plan: *${currency}${Number(planAmount || 0).toLocaleString()}*\n• Token Received: *${currency}${Number(tokenPaid || 0).toLocaleString()}*\n• Remaining Due: *${currency}${Number(remainingAmount || 0).toLocaleString()}*\n• Service Period: *${startDate || 'Today'}* to *${completionDate || '1 Month'}*\n\nPlease feel free to reach out anytime. Looking forward to driving great results together!\n\nBest regards,\n*Jugarr Agency*`,
 
-  balanceDue: ({ clientName, businessName, planAmount, remainingAmount, completionDate, upiLink, upiId, currency = '₹' }) => {
+  balanceDue: ({ clientName, businessName, planAmount, remainingAmount, completionDate, currency = '₹' }) => {
     let msg = `Hi ${clientName || 'there'},\n\nHope you are having a productive week! This is a gentle reminder regarding the remaining balance for your monthly service plan for *${businessName || 'your business'}*.\n\n💰 *Payment Details:*\n• Monthly Plan: *${currency}${Number(planAmount || 0).toLocaleString()}*\n• Remaining Due: *${currency}${Number(remainingAmount || 0).toLocaleString()}*\n• Plan Active Till: *${completionDate || 'Month End'}*`;
-
-    if (upiLink && upiId) {
-      msg += `\n\n📲 *Pay Instantly via UPI (GPay / PhonePe / Paytm):*\nUPI ID: *${upiId}*\n${upiLink}`;
-    }
 
     msg += `\n\nKindly share the confirmation once the remaining amount is transferred. Please let us know if you need our bank or account details.\n\nThank you,\n*Jugarr Agency*`;
     return msg;

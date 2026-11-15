@@ -2,6 +2,8 @@ import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '../components/layout/AppLayout.jsx';
 import { LoadingSpinner } from '../components/common/LoadingSpinner.jsx';
+import { LoginPage } from '../features/auth/LoginPage.jsx';
+import { ProtectedRoute } from '../features/auth/ProtectedRoute.jsx';
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[50vh]">
@@ -27,11 +29,22 @@ const ClientDetailPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('../features/settings/SettingsPage.jsx').then((m) => ({ default: m.SettingsPage }))
 );
+const FinancePage = lazy(() =>
+  import('../features/finance/FinancePage.jsx').then((m) => ({ default: m.FinancePage }))
+);
 
 export const router = createBrowserRouter([
   {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -44,6 +57,10 @@ export const router = createBrowserRouter([
       {
         path: 'clients/:id',
         element: withSuspense(ClientDetailPage),
+      },
+      {
+        path: 'finance',
+        element: withSuspense(FinancePage),
       },
       {
         path: 'settings',

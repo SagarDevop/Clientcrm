@@ -394,25 +394,25 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      maxWidth="max-w-6xl"
       title={
         initialData
           ? 'Edit Client Details'
           : clientType === 'web_development'
-          ? 'Add Web Development Client & Project'
-          : 'Add Content Management Client & Plan'
+          ? 'Enterprise Web Development Client & Quotation'
+          : 'Agency Monthly Content Management Client'
       }
-      size="lg"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-xl flex items-start space-x-2 text-rose-800 dark:text-rose-200 text-xs">
-            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <div className="p-4 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-start space-x-3 text-rose-800 dark:text-rose-200 text-sm">
+            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {warnings.length > 0 && (
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl space-y-1">
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-2xl space-y-1">
             {warnings.map((w, idx) => (
               <div key={idx} className="flex items-start space-x-2 text-amber-800 dark:text-amber-200 text-xs">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -422,35 +422,35 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
           </div>
         )}
 
-        {/* 0. Client Type Selection (Content Management vs. Web Development) */}
+        {/* 0. Client Type Selection (Full PC Friendly SaaS Tabs) */}
         {!initialData && (
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
-              Select Client Type <span className="text-rose-500">*</span>
+          <div className="space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+              Select Client Type & Contract Scope <span className="text-rose-500">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={() => setClientType('content_management')}
-                className={`p-3 rounded-2xl border text-left transition-all flex items-start gap-3 ${
+                className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-4 ${
                   clientType === 'content_management'
-                    ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 shadow-xs ring-2 ring-emerald-500/20'
+                    ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 shadow-md ring-2 ring-emerald-500/20'
                     : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400'
                 }`}
               >
                 <div
-                  className={`p-2 rounded-xl flex-shrink-0 ${
+                  className={`p-3 rounded-xl flex-shrink-0 ${
                     clientType === 'content_management'
-                      ? 'bg-emerald-600 text-white'
+                      ? 'bg-emerald-600 text-white shadow-sm'
                       : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
                   }`}
                 >
-                  <Layers className="w-4 h-4" />
+                  <Layers className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="font-bold text-xs">Content Management</div>
-                  <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5 leading-tight">
-                    Monthly recurring retainer & social media content production
+                  <div className="font-bold text-sm text-stone-900 dark:text-stone-100">Content Management & Retainer</div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
+                    Monthly recurring plan, package deliverable builder, automated billing cycle & renewal alarms.
                   </div>
                 </div>
               </button>
@@ -458,25 +458,25 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
               <button
                 type="button"
                 onClick={() => setClientType('web_development')}
-                className={`p-3 rounded-2xl border text-left transition-all flex items-start gap-3 ${
+                className={`p-4 rounded-2xl border text-left transition-all flex items-start gap-4 ${
                   clientType === 'web_development'
-                    ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 shadow-xs ring-2 ring-emerald-500/20'
+                    ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 shadow-md ring-2 ring-emerald-500/20'
                     : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400'
                 }`}
               >
                 <div
-                  className={`p-2 rounded-xl flex-shrink-0 ${
+                  className={`p-3 rounded-xl flex-shrink-0 ${
                     clientType === 'web_development'
-                      ? 'bg-emerald-600 text-white'
+                      ? 'bg-emerald-600 text-white shadow-sm'
                       : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
                   }`}
                 >
-                  <Code className="w-4 h-4" />
+                  <Code className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="font-bold text-xs">Web Development</div>
-                  <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5 leading-tight">
-                    Project-based milestone delivery, quotation & advance tracking
+                  <div className="font-bold text-sm text-stone-900 dark:text-stone-100">Web Development & Software</div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
+                    Full line-item quotation builder, milestone delivery dates, asset links & instant UPI advance tracker.
                   </div>
                 </div>
               </button>
@@ -484,73 +484,68 @@ export function ClientFormModal({ isOpen, onClose, initialData = null, onSaved }
           </div>
         )}
 
-        {/* 1. Client & Business Identity */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Client Name <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Rahul Verma"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              onBlur={handleCheckDuplicates}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 focus:ring-2 focus:ring-emerald-500"
-            />
+        {/* 1. Client & Business Identity - Desktop 4 Columns Grid */}
+        <div className="p-5 rounded-2xl bg-stone-50/70 dark:bg-stone-800/40 border border-stone-200/80 dark:border-stone-800 space-y-3">
+          <div className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+            Client & Organization Details
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Client Name <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Rahul Verma"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onBlur={handleCheckDuplicates}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Business Name <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Verma Retail & Co."
-              value={formData.businessName}
-              onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-        </div>
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Business Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Apex Tech Solutions"
+                value={formData.businessName}
+                onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                onBlur={handleCheckDuplicates}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
 
-        {/* 2. Contact Information */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Email Address <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="email"
-              required
-              placeholder="client@company.com"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              onBlur={handleCheckDuplicates}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 focus:ring-2 focus:ring-emerald-500"
-            />
-            <span className="text-[10px] text-stone-400">
-              {clientType === 'web_development'
-                ? 'Official quotation PDF & project agreements will be emailed here'
-                : 'Onboarding & monthly completion emails will be sent here'}
-            </span>
-          </div>
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Email Address <span className="text-stone-400 font-normal">(For Quotation & Welcome Email)</span>
+              </label>
+              <input
+                type="email"
+                placeholder="client@company.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onBlur={handleCheckDuplicates}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Phone / WhatsApp Number <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="tel"
-              required
-              placeholder="e.g. 9876543210"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              onBlur={handleCheckDuplicates}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 focus:ring-2 focus:ring-emerald-500"
-            />
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Phone / WhatsApp Number
+              </label>
+              <input
+                type="tel"
+                placeholder="+91 98765 43210"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onBlur={handleCheckDuplicates}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
           </div>
         </div>
 
