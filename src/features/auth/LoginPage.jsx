@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { saasApi, setAuthToken, setAuthUser } from '../../services/saasApi.js';
-import { ShieldCheck, Mail, Lock, Building, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, Building, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export function LoginPage() {
-  const [isRegister, setIsRegister] = useState(false);
-  const [name, setName] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('warshasingh21@gmail.com');
+  const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,12 +19,7 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      let res;
-      if (isRegister) {
-        res = await saasApi.register({ name, companyName, email, password });
-      } else {
-        res = await saasApi.login({ email, password });
-      }
+      const res = await saasApi.login({ email, password });
 
       if (res && res.token) {
         setAuthToken(res.token);
@@ -36,7 +28,7 @@ export function LoginPage() {
         window.location.reload();
       }
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please check credentials.');
+      setError(err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
@@ -50,65 +42,29 @@ export function LoginPage() {
             <Building className="w-8 h-8" />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-stone-900 dark:text-stone-100">
-          {isRegister ? 'Start Your SaaS Workspace' : 'Sign in to BizCRM SaaS'}
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight">
+          Jugarr Agency CRM
         </h2>
-        <p className="mt-2 text-center text-sm text-stone-600 dark:text-stone-400">
-          Cloud-powered agency client & billing platform
+        <p className="mt-2 text-center text-xs text-stone-500 dark:text-stone-400">
+          Private Owner Access
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <div className="bg-white dark:bg-stone-900 py-8 px-6 shadow-xl border border-stone-200 dark:border-stone-800 rounded-2xl sm:px-10">
+        <div className="bg-white dark:bg-stone-900 py-8 px-6 shadow-xl border border-stone-200 dark:border-stone-800 rounded-3xl sm:px-10 space-y-6">
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-sm text-red-600 dark:text-red-400">
+            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-600 dark:text-rose-400 font-semibold">
               {error}
             </div>
           )}
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            {isRegister && (
-              <>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
-                    Full Name
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Sagar Singh"
-                      className="appearance-none block w-full px-3 py-2.5 border border-stone-300 dark:border-stone-700 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-stone-50/50 dark:bg-stone-800 dark:text-stone-100"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
-                    Agency / Business Name
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      type="text"
-                      required
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      placeholder="e.g. Jugarr Agency"
-                      className="appearance-none block w-full px-3 py-2.5 border border-stone-300 dark:border-stone-700 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-stone-50/50 dark:bg-stone-800 dark:text-stone-100"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
-                Email Address
+              <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300 mb-1">
+                Owner Email
               </label>
-              <div className="mt-1 relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="relative rounded-xl shadow-xs">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                   <Mail className="h-4 w-4 text-stone-400" />
                 </div>
                 <input
@@ -117,17 +73,17 @@ export function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="warshasingh21@gmail.com"
-                  className="appearance-none block w-full pl-9 pr-3 py-2.5 border border-stone-300 dark:border-stone-700 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-stone-50/50 dark:bg-stone-800 dark:text-stone-100"
+                  className="appearance-none block w-full pl-10 pr-3.5 py-3 border border-stone-200 dark:border-stone-700 rounded-xl placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs bg-stone-50/50 dark:bg-stone-800 dark:text-stone-100 font-medium"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+              <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300 mb-1">
                 Password
               </label>
-              <div className="mt-1 relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="relative rounded-xl shadow-xs">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                   <Lock className="h-4 w-4 text-stone-400" />
                 </div>
                 <input
@@ -136,7 +92,7 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="appearance-none block w-full pl-9 pr-3 py-2.5 border border-stone-300 dark:border-stone-700 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-stone-50/50 dark:bg-stone-800 dark:text-stone-100"
+                  className="appearance-none block w-full pl-10 pr-3.5 py-3 border border-stone-200 dark:border-stone-700 rounded-xl placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs bg-stone-50/50 dark:bg-stone-800 dark:text-stone-100 font-medium"
                 />
               </div>
             </div>
@@ -144,43 +100,25 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50"
+              className="w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl shadow-lg shadow-emerald-600/25 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
-                'Processing...'
-              ) : isRegister ? (
-                <>
-                  Create SaaS Account <ArrowRight className="w-4 h-4" />
-                </>
+                'Signing In...'
               ) : (
                 <>
-                  Sign In <ArrowRight className="w-4 h-4" />
+                  <span>Sign In to Dashboard</span>
+                  <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
-          {!isRegister && (
-            <div className="mt-4 p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-800 text-xs text-stone-600 dark:text-stone-300">
-              <span className="font-bold text-stone-900 dark:text-stone-100 block mb-1">🔑 Default Admin Login:</span>
-              <div>Email: <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">warshasingh21@gmail.com</span></div>
-              <div>Password: <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">admin123</span></div>
-            </div>
-          )}
-
-          <div className="mt-6 border-t border-stone-200 dark:border-stone-800 pt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsRegister(!isRegister);
-                setError('');
-              }}
-              className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
-            >
-              {isRegister
-                ? 'Already have an account? Sign in here'
-                : "Don't have an agency account? Register your SaaS workspace"}
-            </button>
+          <div className="p-3.5 bg-stone-50 dark:bg-stone-800/40 rounded-2xl border border-stone-200/60 dark:border-stone-800 text-[11px] text-stone-500 dark:text-stone-400 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 font-medium">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Owner Access Only</span>
+            </span>
+            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">warshasingh21@gmail.com</span>
           </div>
         </div>
       </div>
