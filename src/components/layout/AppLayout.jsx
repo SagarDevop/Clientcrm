@@ -25,19 +25,19 @@ export function AppLayout() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
-      {/* Desktop Sidebar */}
+    <div className="flex h-screen overflow-hidden bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
+      {/* Desktop Sidebar (Fixed / Stuck on Left) */}
       <Sidebar onOpenAddClient={() => setIsAddClientOpen(true)} />
 
-      {/* Main Container */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Scrollable Viewport */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         <PwaInstallBanner />
         <Header
           onOpenSearch={() => setIsSearchOpen(true)}
           onOpenAddClient={() => setIsAddClientOpen(true)}
         />
 
-        <main className="flex-1 pb-24 md:pb-8 p-4 sm:p-6 max-w-6xl w-full mx-auto">
+        <main className="flex-1 pb-24 md:pb-8 p-4 sm:p-6 max-w-7xl w-full mx-auto">
           <Outlet />
         </main>
 

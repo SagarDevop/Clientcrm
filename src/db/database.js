@@ -97,7 +97,7 @@ export class BizCRMDatabase extends Dexie {
 
       // Default app settings
       this.settings.bulkAdd([
-        { key: 'theme', value: 'system', updatedAt: now },
+        { key: 'theme', value: 'light', updatedAt: now },
         { key: 'currency', value: 'USD', updatedAt: now },
         { key: 'defaultFollowUpDays', value: 3, updatedAt: now },
         { key: 'notificationsEnabled', value: false, updatedAt: now },

@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { settingsRepo } from '../db/repositories/settingsRepo.js';
 
 export function useTheme() {
-  const storedTheme = useLiveQuery(() => settingsRepo.get('theme', 'system'), [], 'system');
+  const storedTheme = useLiveQuery(() => settingsRepo.get('theme', 'light'), [], 'light');
   const [resolvedTheme, setResolvedTheme] = useState('light');
 
   useEffect(() => {
@@ -12,8 +12,7 @@ export function useTheme() {
 
     function applyTheme() {
       const isDark =
-        storedTheme === 'dark' ||
-        (storedTheme === 'system' && mediaQuery.matches);
+        storedTheme === 'dark';
 
       if (isDark) {
         root.classList.add('dark');
@@ -41,7 +40,7 @@ export function useTheme() {
   };
 
   return {
-    theme: storedTheme || 'system',
+    theme: storedTheme || 'light',
     resolvedTheme,
     setTheme,
   };
