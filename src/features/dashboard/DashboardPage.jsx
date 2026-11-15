@@ -221,37 +221,35 @@ export function DashboardPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-2 sm:px-4 py-2">
       {/* SaaS Motion Topbar with Add Client + Add Expense */}
+      {/* Compact SaaS Hero Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200/80 dark:border-stone-800 shadow-sm"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-stone-900 px-5 py-4 rounded-2xl border border-stone-200/80 dark:border-stone-800 shadow-xs"
       >
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60">
-              Agency Growth Suite
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60">
+              Agency Suite
             </span>
-            <span className="text-xs text-stone-400">• MRR & Expense Analytics</span>
+            <span className="text-[11px] text-stone-400">MRR, Revenue & Profit Center</span>
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-stone-900 dark:text-stone-100 mt-1">
-            Company Revenue, Costs & Profit Center
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100 mt-0.5">
+            Overview & Revenue Studio
           </h1>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-            Track Monthly Recurring Revenue (MRR), company tool expenses, server costs, and net profit margins.
-          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             type="button"
             onClick={() => setIsAddExpenseOpen(true)}
-            className="inline-flex items-center space-x-2 px-4 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200/60 font-bold text-xs tracking-wide shadow-xs transition-all"
+            className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200/60 font-semibold text-xs transition-all"
           >
-            <Receipt className="w-4 h-4" />
-            <span>+ Add Expense</span>
+            <Receipt className="w-3.5 h-3.5" />
+            <span>+ Expense</span>
           </motion.button>
 
           <motion.button
@@ -259,10 +257,10 @@ export function DashboardPage() {
             whileTap={{ scale: 0.98 }}
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center space-x-2 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs tracking-wide shadow-lg shadow-emerald-600/25 transition-all"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/20 transition-all"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Add Client</span>
+            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            <span>+ Add Client</span>
           </motion.button>
         </div>
       </motion.div>
@@ -271,7 +269,7 @@ export function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`p-4 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-sm ${
+          className={`p-3 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs ${
             completionFeedback.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200'
               : 'bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200'
@@ -288,208 +286,164 @@ export function DashboardPage() {
         </motion.div>
       )}
 
-      {/* 5 Growth & Financial Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* 1. All-Time Total Income Board (Lifetime Income) */}
+      {/* Compact 6-Column Grid for Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* 1. All-Time Total Income */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.03 }}
-          whileHover={{ y: -3, transition: { duration: 0.15 } }}
-          className="p-5 rounded-3xl bg-gradient-to-br from-emerald-500/10 via-white to-white dark:from-emerald-950/40 dark:via-stone-900 dark:to-stone-900 border-2 border-emerald-500/30 dark:border-emerald-600/30 shadow-md shadow-emerald-500/5 relative overflow-hidden group"
+          whileHover={{ y: -2 }}
+          className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50/70 to-white dark:from-emerald-950/30 dark:to-stone-900 border border-emerald-500/30 dark:border-emerald-600/30 shadow-xs relative overflow-hidden"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>All-Time Income</span>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+              All-Time Income
             </span>
-            <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-sm shadow-emerald-600/30">
-              <DollarSign className="w-4 h-4 stroke-[3]" />
+            <div className="p-1 rounded-lg bg-emerald-600 text-white">
+              <DollarSign className="w-3 h-3 stroke-[3]" />
             </div>
           </div>
-          <div className="text-2xl font-black font-mono text-emerald-700 dark:text-emerald-400">
+          <div className="text-lg font-black font-mono text-emerald-700 dark:text-emerald-300">
             <AnimatedCounter value={totalAllTimeIncome} prefix="₹" />
           </div>
-          <div className="text-[11px] font-semibold text-emerald-600/80 dark:text-emerald-400/80 mt-2 flex items-center justify-between">
-            <span>Cumulative Inflow</span>
-            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded-md font-bold">TOTAL</span>
-          </div>
+          <div className="text-[10px] text-stone-400 mt-1">Cumulative Total</div>
         </motion.div>
 
-        {/* 2. Monthly Recurring Revenue (MRR) */}
+        {/* 2. Monthly MRR */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.05 }}
-          whileHover={{ y: -3, transition: { duration: 0.15 } }}
-          className="p-5 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-sm relative overflow-hidden group"
+          whileHover={{ y: -2 }}
+          className="p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-xs"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
               Monthly MRR
             </span>
-            <div className="p-2.5 rounded-2xl bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300">
-              <TrendingUp className="w-4 h-4" />
+            <div className="p-1 rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-300">
+              <TrendingUp className="w-3 h-3" />
             </div>
           </div>
-          <div className="text-2xl font-black font-mono text-stone-900 dark:text-stone-100">
+          <div className="text-lg font-black font-mono text-stone-900 dark:text-stone-100">
             <AnimatedCounter value={monthlyRecurringRevenue} prefix="₹" />
           </div>
-          <div className="text-[11px] text-stone-400 mt-2">Active Retainers / Mo</div>
+          <div className="text-[10px] text-stone-400 mt-1">Active Retainers</div>
         </motion.div>
 
-        {/* 2. Total Cleared Revenue */}
+        {/* 3. Cleared Inflow */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.1 }}
-          whileHover={{ y: -3, transition: { duration: 0.15 } }}
-          className="p-5 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-sm relative overflow-hidden group"
+          whileHover={{ y: -2 }}
+          className="p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-xs"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
               Cleared Inflow
             </span>
-            <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className="p-1 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300">
+              <CheckCircle2 className="w-3 h-3" />
             </div>
           </div>
-          <div className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+          <div className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
             <AnimatedCounter value={totalPaymentsReceived} prefix="₹" />
           </div>
-          <div className="text-[11px] text-stone-400 mt-2">Tokens & Payments Received</div>
+          <div className="text-[10px] text-stone-400 mt-1">Current Active</div>
         </motion.div>
 
-        {/* 3. Company Expenses */}
+        {/* 4. Total Expenses */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.15 }}
-          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          whileHover={{ y: -2 }}
           onClick={() => setIsAddExpenseOpen(true)}
-          className="p-5 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 hover:border-rose-400 cursor-pointer shadow-sm relative overflow-hidden group"
+          className="p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 hover:border-rose-400 cursor-pointer shadow-xs"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
-              Total Expenses
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+              Expenses
             </span>
-            <div className="p-2.5 rounded-2xl bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
-              <Receipt className="w-4 h-4" />
+            <div className="p-1 rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300">
+              <Receipt className="w-3 h-3" />
             </div>
           </div>
-          <div className="text-2xl font-black font-mono text-rose-600 dark:text-rose-400">
+          <div className="text-lg font-black font-mono text-rose-600 dark:text-rose-400">
             <AnimatedCounter value={totalExpenses} prefix="₹" />
           </div>
-          <div className="text-[11px] text-stone-400 mt-2">
-            <AnimatedCounter value={thisMonthExpenses} prefix="₹" /> this month
+          <div className="text-[10px] text-stone-400 mt-1">
+            <AnimatedCounter value={thisMonthExpenses} prefix="₹" /> mo.
           </div>
         </motion.div>
 
-        {/* 4. Net Profit */}
+        {/* 5. Net Agency Profit */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.2 }}
-          whileHover={{ y: -3, transition: { duration: 0.15 } }}
-          className="p-5 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-sm relative overflow-hidden group"
+          whileHover={{ y: -2 }}
+          className="p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-xs"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-              Net Agency Profit
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+              Net Profit
             </span>
-            <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
-              <Sparkles className="w-4 h-4" />
+            <div className="p-1 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
+              <Sparkles className="w-3 h-3" />
             </div>
           </div>
-          <div className={`text-2xl font-black font-mono ${netProfit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+          <div className={`text-lg font-black font-mono ${netProfit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
             <AnimatedCounter value={netProfit} prefix="₹" />
           </div>
-          <div className="text-[11px] text-stone-400 mt-2">Margin: <AnimatedCounter value={profitMargin} suffix="%" /></div>
+          <div className="text-[10px] text-stone-400 mt-1">Margin: <AnimatedCounter value={profitMargin} suffix="%" /></div>
         </motion.div>
 
-        {/* 5. Pending Balance Receivables */}
+        {/* 6. Pending Receivables */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.25 }}
-          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          whileHover={{ y: -2 }}
           onClick={() => navigate('/clients')}
-          className="p-5 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 hover:border-amber-400 cursor-pointer shadow-sm relative overflow-hidden group"
+          className="p-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 hover:border-amber-400 cursor-pointer shadow-xs"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-              Pending Receivables
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+              Receivables
             </span>
-            <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
-              <AlertTriangle className="w-4 h-4" />
+            <div className="p-1 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300">
+              <AlertTriangle className="w-3 h-3" />
             </div>
           </div>
-          <div className="text-2xl font-black font-mono text-stone-900 dark:text-stone-100">
+          <div className="text-lg font-black font-mono text-stone-900 dark:text-stone-100">
             <AnimatedCounter value={totalRemainingDue} prefix="₹" />
           </div>
-          <div className="text-[11px] text-stone-400 mt-2">To collect on delivery</div>
+          <div className="text-[10px] text-stone-400 mt-1">To collect</div>
         </motion.div>
       </div>
 
-      {/* NEW: Lifetime All-Time Monthly Income Board & Month-by-Month Breakdown */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.2 }}
-        className="p-6 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-sm space-y-4"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                Income Summary
-              </span>
-              <span className="text-xs text-stone-400">• All Months Cumulative</span>
-            </div>
-            <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 mt-1 flex items-center gap-2">
-              <span>Lifetime Income & Month-wise Collection Board</span>
-            </h2>
-            <p className="text-xs text-stone-500 dark:text-stone-400">
-              Complete historical record of all client retainer tokens, web development advances, and milestone payments.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 bg-stone-50 dark:bg-stone-800/60 p-3 rounded-2xl border border-stone-200/60 dark:border-stone-700">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-stone-400 block">Total Lifetime Inflow</span>
-              <span className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
-                <AnimatedCounter value={totalAllTimeIncome} prefix="₹" />
-              </span>
-            </div>
-          </div>
+      {/* Compact Month-by-Month Collection Bar */}
+      <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-xs space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-stone-700 dark:text-stone-200 uppercase tracking-wider flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Monthly Income Ledger</span>
+          </span>
+          <span className="text-[11px] font-bold text-stone-400">
+            Lifetime Total: <strong className="text-emerald-600 font-mono">₹{totalAllTimeIncome.toLocaleString()}</strong>
+          </span>
         </div>
 
-        {/* Month by month pill grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 pt-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
           {monthlyIncomeList.map((m) => (
             <div
               key={m.key}
-              className={`p-3.5 rounded-2xl border transition-all ${
+              className={`px-3 py-2 rounded-xl border flex-shrink-0 flex items-center space-x-3 transition-all ${
                 m.isCurrent
-                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-100 shadow-xs'
+                  ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
                   : 'border-stone-200/80 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40'
               }`}
             >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-bold text-stone-600 dark:text-stone-400">{m.label}</span>
-                {m.isCurrent && (
-                  <span className="text-[9px] font-extrabold uppercase bg-emerald-600 text-white px-1.5 py-0.5 rounded-full">
-                    Current
-                  </span>
-                )}
+              <div>
+                <div className="text-[10px] text-stone-400 font-semibold">{m.label}</div>
+                <div className="text-xs font-black font-mono text-stone-900 dark:text-stone-100">
+                  ₹{Number(m.amount).toLocaleString()}
+                </div>
               </div>
-              <div className="text-base font-black font-mono text-stone-900 dark:text-stone-100">
-                <AnimatedCounter value={m.amount} prefix="₹" />
-              </div>
+              {m.isCurrent && (
+                <span className="text-[8px] font-extrabold uppercase bg-emerald-600 text-white px-1.5 py-0.5 rounded-full">
+                  Now
+                </span>
+              )}
             </div>
           ))}
         </div>
-      </motion.div>
+      </div>
 
       {/* SaaS Analytics Chart Bars Section */}
       <motion.div
