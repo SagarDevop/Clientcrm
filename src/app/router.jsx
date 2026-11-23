@@ -20,6 +20,12 @@ const withSuspense = (Component) => (
 const DashboardPage = lazy(() =>
   import('../features/dashboard/DashboardPage.jsx').then((m) => ({ default: m.DashboardPage }))
 );
+const PartnerDashboard = lazy(() =>
+  import('../features/partners/PartnerDashboard.jsx').then((m) => ({ default: m.PartnerDashboard }))
+);
+const KnowledgeCenter = lazy(() =>
+  import('../features/knowledge/KnowledgeCenter.jsx').then((m) => ({ default: m.KnowledgeCenter }))
+);
 const ClientsPage = lazy(() =>
   import('../features/clients/ClientsPage.jsx').then((m) => ({ default: m.ClientsPage }))
 );
@@ -51,6 +57,14 @@ export const router = createBrowserRouter([
         element: withSuspense(DashboardPage),
       },
       {
+        path: 'partner-dashboard',
+        element: withSuspense(PartnerDashboard),
+      },
+      {
+        path: 'knowledge',
+        element: withSuspense(KnowledgeCenter),
+      },
+      {
         path: 'clients',
         element: withSuspense(ClientsPage),
       },
@@ -65,55 +79,6 @@ export const router = createBrowserRouter([
       {
         path: 'settings',
         element: withSuspense(SettingsPage),
-      },
-      // Safe redirects for any old URLs
-      {
-        path: 'leads',
-        element: <Navigate to="/clients" replace />,
-      },
-      {
-        path: 'leads/:id',
-        element: <Navigate to="/clients" replace />,
-      },
-      {
-        path: 'projects',
-        element: <Navigate to="/clients" replace />,
-      },
-      {
-        path: 'projects/:id',
-        element: <Navigate to="/clients" replace />,
-      },
-      {
-        path: 'tasks',
-        element: <Navigate to="/" replace />,
-      },
-      {
-        path: 'finance',
-        element: <Navigate to="/clients" replace />,
-      },
-      {
-        path: 'payments',
-        element: <Navigate to="/clients" replace />,
-      },
-      {
-        path: 'content',
-        element: <Navigate to="/clients" replace />,
-      },
-      {
-        path: 'reports',
-        element: <Navigate to="/" replace />,
-      },
-      {
-        path: 'notifications',
-        element: <Navigate to="/" replace />,
-      },
-      {
-        path: 'reminders',
-        element: <Navigate to="/" replace />,
-      },
-      {
-        path: 'services',
-        element: <Navigate to="/clients" replace />,
       },
       {
         path: '*',

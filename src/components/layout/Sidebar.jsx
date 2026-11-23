@@ -13,6 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
+  Award,
+  BookOpen,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme.js';
 import { useAuth } from '../../features/auth/AuthContext.jsx';
@@ -24,9 +26,11 @@ export function Sidebar({ onOpenAddClient }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems = [
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/', label: 'Executive Dashboard', icon: LayoutDashboard },
+    { to: '/partner-dashboard', label: 'Partner Hub', icon: Award },
     { to: '/clients', label: 'Active Clients', icon: Users },
     { to: '/finance', label: 'Growth & Finance', icon: TrendingUp },
+    { to: '/knowledge', label: 'Knowledge Center', icon: BookOpen },
     { to: '/settings', label: 'Settings', icon: Settings },
   ];
 
@@ -76,7 +80,7 @@ export function Sidebar({ onOpenAddClient }) {
                 {tenant?.name || 'Jugarr Agency'}
               </div>
               <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
-                {tenant?.plan || 'PRO'} SAAS
+                {tenant?.plan || 'PRO'} PARTNER CRM
               </p>
             </motion.div>
           )}
@@ -181,10 +185,10 @@ export function Sidebar({ onOpenAddClient }) {
           isCollapsed ? 'justify-center flex-col gap-2' : 'justify-between'
         }`}
       >
-        <div className="flex items-center space-x-2 pl-1" title="SaaS Cloud Active">
+        <div className="flex items-center space-x-2 pl-1" title="Real-Time Partner Sync Active">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
           {!isCollapsed && (
-            <span className="text-[11px] text-stone-500 dark:text-stone-400 font-medium">SaaS Cloud Active</span>
+            <span className="text-[11px] text-stone-500 dark:text-stone-400 font-medium">Real-Time Sync Active</span>
           )}
         </div>
         <button
