@@ -9,16 +9,16 @@
       "destination": "/api/send-email.js"
     },
     {
-      "source": "/api/auth/(.*)",
-      "destination": "/api/auth.js?action=$1"
+      "source": "/api/auth/:action",
+      "destination": "/api/auth.js"
     },
     {
       "source": "/api/:resource/:id",
-      "destination": "/api/data.js?resource=$resource&id=$id"
+      "destination": "/api/data.js"
     },
     {
       "source": "/api/:resource",
-      "destination": "/api/data.js?resource=$resource"
+      "destination": "/api/data.js"
     },
     {
       "source": "/(.*)",

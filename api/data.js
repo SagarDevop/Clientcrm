@@ -29,12 +29,21 @@ export default async function handler(req, res) {
     const tenantId = user.tenantId || 'org_default';
 
     // Parse resource & id from query or URL
-    // e.g. /api/data?resource=clients&id=123
-    const resource = req.query.resource;
-    const id = req.query.id;
+    // e.g. /api/data?resource=clients&id=123 or req.url = /api/clients
+    let resource = req.query.resource;
+    let id = req.query.id;
 
-    if (!resource) {
-      return res.status(400).json({ error: 'Missing resource parameter' });
+    if (!resource || resource === '$resource' || resource.startsWith(':')) {
+      const parsedUrl = new URL(req.url, 'http://localhost');
+      const segments = parsedUrl.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
+      resource = segments[0];
+      if (segments[1] && (!id || id === '$id')) {
+        id = segments[1];
+      }
+    }
+
+    if (!resource || resource === '$resource') {
+      return res.status(400).json({ error: 'Missing or invalid resource parameter' });
     }
 
     const collection = db.collection(resource);
