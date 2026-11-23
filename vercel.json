@@ -1,8 +1,24 @@
 {
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/health",
+      "destination": "/api/health.js"
+    },
+    {
+      "source": "/api/send-email",
+      "destination": "/api/send-email.js"
+    },
+    {
+      "source": "/api/auth/(.*)",
+      "destination": "/api/auth.js?action=$1"
+    },
+    {
+      "source": "/api/:resource/:id",
+      "destination": "/api/data.js?resource=$resource&id=$id"
+    },
+    {
+      "source": "/api/:resource",
+      "destination": "/api/data.js?resource=$resource"
     },
     {
       "source": "/(.*)",

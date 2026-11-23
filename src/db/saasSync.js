@@ -50,12 +50,48 @@ export async function syncLocalToCloud() {
       }
     }
 
-    // 4. Pull down cloud clients to local cache for instant UI rendering
-    const cloudClients = await saasApi.getAll('clients');
-    if (Array.isArray(cloudClients) && cloudClients.length > 0) {
-      for (const cc of cloudClients) {
-        await db.clients.put(cc);
+    // 4. Pull down cloud data to local Dexie cache so any new browser immediately gets all data
+    try {
+      const [cloudClients, cloudPayments, cloudExpenses, cloudProjects] = await Promise.all([
+        saasApi.getAll('clients').catch(() => []),
+        saasApi.getAll('payments').catch(() => []),
+        saasApi.getAll('expenses').catch(() => []),
+        saasApi.getAll('projects').catch(() => []),
+      ]);
+
+      if (Array.isArray(cloudClients) && cloudClients.length > 0) {
+        for (const cc of cloudClients) {
+          const item = { ...cc };
+          delete item._id;
+          await db.clients.put(item);
+        }
       }
+
+      if (Array.isArray(cloudPayments) && cloudPayments.length > 0) {
+        for (const cp of cloudPayments) {
+          const item = { ...cp };
+          delete item._id;
+          await db.payments.put(item);
+        }
+      }
+
+      if (Array.isArray(cloudExpenses) && cloudExpenses.length > 0) {
+        for (const ce of cloudExpenses) {
+          const item = { ...ce };
+          delete item._id;
+          await db.expenses.put(item);
+        }
+      }
+
+      if (Array.isArray(cloudProjects) && cloudProjects.length > 0) {
+        for (const cpr of cloudProjects) {
+          const item = { ...cpr };
+          delete item._id;
+          await db.projects.put(item);
+        }
+      }
+    } catch (e) {
+      console.warn('Error pulling cloud data to local DB:', e);
     }
   } catch (err) {
     console.warn('SaaS background cloud sync notice:', err.message);
