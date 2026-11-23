@@ -6,11 +6,17 @@ import { BottomNav } from './BottomNav.jsx';
 import { PwaInstallBanner } from '../common/PwaInstallBanner.jsx';
 import { GlobalSearchModal } from '../common/GlobalSearchModal.jsx';
 import { ClientFormModal } from '../forms/ClientFormModal.jsx';
+import { syncLocalToCloud } from '../../db/saasSync.js';
 
 export function AppLayout() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Trigger sync on layout mount
+  useEffect(() => {
+    syncLocalToCloud();
+  }, []);
 
   // Keyboard shortcut Ctrl+K / Cmd+K for global search
   useEffect(() => {

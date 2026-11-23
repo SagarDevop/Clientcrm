@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/database.js';
 import { clientsRepo } from '../db/repositories/clientsRepo.js';
 import { saasApi, getAuthToken } from '../services/saasApi.js';
 
@@ -8,6 +9,50 @@ export function useClients(filters = {}) {
     [filters.status, filters.serviceId, filters.search],
     []
   );
+
+  const createClient = async (data) => {
+    const record = await clientsRepo.create(data);
+    if (getAuthToken()) {
+      saasApi.create('clients', record).catch((err) => console.warn('Cloud client create error:', err));
+    }
+    return record;
+  };
+
+  const createWithPlan = async (data) => {
+    const record = await clientsRepo.createWithPlan(data);
+    if (getAuthToken()) {
+      saasApi.create('clients', record).catch((err) => console.warn('Cloud client create error:', err));
+      if (record.tokenPaid > 0) {
+        saasApi.create('payments', {
+          id: `pay_tok_${record.id}`,
+          clientId: record.id,
+          amount: record.tokenPaid,
+          type: 'token',
+          status: 'completed',
+          paymentMethod: 'bank_transfer',
+          paidAt: new Date().toISOString(),
+          notes: `Token payment for ${record.name}`,
+        }).catch((err) => console.warn('Cloud token payment create error:', err));
+      }
+    }
+    return record;
+  };
+
+  const createWebDevClient = async (data) => {
+    const record = await clientsRepo.createWebDevClient(data);
+    if (getAuthToken()) {
+      saasApi.create('clients', record).catch((err) => console.warn('Cloud client create error:', err));
+    }
+    return record;
+  };
+
+  const updateClient = async (id, updates) => {
+    const record = await clientsRepo.update(id, updates);
+    if (getAuthToken()) {
+      saasApi.update('clients', id, record).catch((err) => console.warn('Cloud client update error:', err));
+    }
+    return record;
+  };
 
   const deleteClient = async (id, force = true) => {
     await clientsRepo.delete(id, db, { force });
@@ -23,10 +68,10 @@ export function useClients(filters = {}) {
   return {
     clients: clients || [],
     isLoading: clients === undefined,
-    createClient: (data) => clientsRepo.create(data),
-    createWithPlan: (data) => clientsRepo.createWithPlan(data),
-    createWebDevClient: (data) => clientsRepo.createWebDevClient(data),
-    updateClient: (id, updates) => clientsRepo.update(id, updates),
+    createClient,
+    createWithPlan,
+    createWebDevClient,
+    updateClient,
     archiveClient: (id) => clientsRepo.archive(id),
     restoreClient: (id) => clientsRepo.restore(id),
     deleteClient,
@@ -37,11 +82,37 @@ export function useClients(filters = {}) {
 export function useClient(id) {
   const client = useLiveQuery(() => clientsRepo.getById(id), [id], null);
 
+  const updateClientRecord = async (updates) => {
+    const res = await clientsRepo.update(id, updates);
+    if (getAuthToken()) {
+      saasApi.update('clients', id, res).catch(() => {});
+    }
+    return res;
+  };
+
+  const recordPaymentRecord = async (paymentData) => {
+    const res = await clientsRepo.recordPayment(id, paymentData);
+    if (getAuthToken()) {
+      saasApi.update('clients', id, res).catch(() => {});
+      saasApi.create('payments', {
+        id: `pay_${Date.now()}`,
+        clientId: id,
+        amount: Number(paymentData.amount) || 0,
+        type: 'installment',
+        status: 'completed',
+        paymentMethod: paymentData.paymentMethod || 'bank_transfer',
+        paidAt: paymentData.paidAt || new Date().toISOString(),
+        notes: paymentData.notes || `Payment for client ${id}`,
+      }).catch(() => {});
+    }
+    return res;
+  };
+
   return {
     client,
     isLoading: client === undefined,
-    updateClient: (updates) => clientsRepo.update(id, updates),
-    recordPayment: (paymentData) => clientsRepo.recordPayment(id, paymentData),
+    updateClient: updateClientRecord,
+    recordPayment: recordPaymentRecord,
     recordWebDevPayment: (paymentData) => clientsRepo.recordWebDevPayment(id, paymentData),
     updateWebDevDeliveryStatus: (status) => clientsRepo.updateWebDevDeliveryStatus(id, status),
     addProjectDocument: (docData) => clientsRepo.addProjectDocument(id, docData),
@@ -62,4 +133,3 @@ export function useClient(id) {
     },
   };
 }
-
